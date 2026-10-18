@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Propagation Manager Console - Ngapori Ranch</title>
+<style>
+/* Sun theme is the default: near-black on white, 2px edges, 48px touch targets, status shown by glyph + pattern as well as color. Night theme is a toggle. */
+:root{--bg:#eef2ec;--card:#fff;--ink:#07110b;--mute:#2f3f35;--line:#5c6d62;--edge:#07110b;--acc:#0a5a28;--acci:#fff;--accs:#d3efdb;--warn:#7a3000;--warns:#ffd8a6;--warnb:#e27100;--bad:#a0001b;--bads:#ffd5db;--blue:#0b3f8f;--blues:#dbe8ff}
+[data-theme=night]{--bg:#0a110d;--card:#141f18;--ink:#f6faf7;--mute:#c3d2c9;--line:#7d968a;--edge:#f6faf7;--acc:#63e590;--acci:#03200e;--accs:#173a25;--warn:#ffc37a;--warns:#3d2a0c;--warnb:#ff9d1f;--bad:#ff8b9b;--bads:#42121b;--blue:#9cc2ff;--blues:#12284a;color-scheme:dark}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+h1{font-size:21px;margin:0}h2{font-size:18px;margin:0 0 8px}h3{font-size:16px;margin:14px 0 6px}p{margin:6px 0}
+.k{color:var(--mute);font-size:14px}.sp{flex:1}.hidden{display:none!important}b{font-weight:700}
+button,input,select{font:inherit;color:var(--ink)}
+input,select{min-height:48px;padding:8px 10px;border:2px solid var(--edge);border-radius:10px;background:var(--card);max-width:100%}
+button{min-height:48px;padding:8px 14px;border:2px solid var(--edge);border-radius:10px;background:var(--acc);color:var(--acci);font-weight:700;cursor:pointer}
+button.alt{background:var(--card);color:var(--ink)}button.on{background:var(--ink);color:var(--bg)}button.sm{min-height:40px;padding:4px 10px;font-size:15px}
+button.dng{background:var(--bad);color:#fff}button:disabled{opacity:.5;cursor:wait}
+:focus-visible{outline:4px solid var(--blue);outline-offset:2px}
+input[type=checkbox]{min-height:0;width:24px;height:24px;accent-color:var(--acc)}
+#top{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:2px solid var(--edge)}
+header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 14px}
+#cbar{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 14px;font-size:15px;border-top:2px solid var(--edge);background:var(--accs)}
+#cbar.off{background:var(--warns);color:var(--warn)}#cbar.stale{background:var(--bads);color:var(--bad)}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--acc);border:2px solid var(--edge);display:inline-block}#cbar.off .dot{background:var(--warnb);border-radius:3px}
+#cbar.sync .dot{animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.25}}@media(prefers-reduced-motion:reduce){#cbar.sync .dot{animation:none}}
+.note{background:var(--warns);color:var(--warn);border:2px solid var(--warnb);border-radius:10px;padding:8px 12px;margin:10px 14px;font-weight:600}
+.note.bad{background:var(--bads);color:var(--bad);border-color:var(--bad)}
+#kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:10px 14px 0}
+.kp{text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--edge);border-radius:12px;padding:8px 12px;min-height:0;display:block;font-weight:400}
+.kp b{display:block;font-size:26px;line-height:1.1}.kp.hot{border-color:var(--warnb);background:var(--warns);color:var(--warn)}.kp.hot b{color:var(--warn)}
+.lay{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(380px,.9fr);gap:14px;padding:12px 14px 40px;align-items:start}
+@media(max-width:980px){.lay{grid-template-columns:1fr}}
+.card{background:var(--card);border:2px solid var(--edge);border-radius:14px;padding:14px}
+#side{position:sticky;top:var(--hh,120px);max-height:calc(100vh - var(--hh,120px) - 12px);overflow:auto;padding:0}
+@media(max-width:980px){#side{position:static;max-height:none;overflow:visible}}
+#tabs{display:flex;gap:6px;padding:8px;position:sticky;top:0;z-index:5;background:var(--card);border-bottom:2px solid var(--edge);border-radius:12px 12px 0 0}
+@media(max-width:980px){#tabs{top:var(--hh,120px)}}
+#tabs button{flex:1;padding:6px 4px}#pane{padding:12px 14px 16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.chips button{min-height:44px}
+.badge{display:inline-flex;gap:5px;align-items:center;padding:2px 10px;border-radius:99px;font-weight:700;font-size:13px;border:2px solid var(--edge);background:var(--card);color:var(--ink);white-space:nowrap}
+.badge.st-occupied,.badge.ok{background:var(--accs);border-color:var(--acc)}.badge.st-ready{background:var(--accs);border-color:var(--acc)}
+.badge.st-attention,.badge.wait{background:var(--warns);color:var(--warn);border-color:var(--warnb)}.badge.bad{background:var(--bads);color:var(--bad);border-color:var(--bad)}
+.badge.st-post{background:repeating-linear-gradient(45deg,#c3c9c5 0 4px,#e8ece9 4px 8px);color:#000}.badge.open{background:var(--blues);color:var(--blue);border-color:var(--blue)}
+.badge.ws-IN_PROGRESS{background:var(--accs);border-color:var(--acc)}.badge.ws-PAUSED{background:var(--warns);color:var(--warn);border-color:var(--warnb)}.badge.ws-ASSIGNED{background:var(--blues);color:var(--blue);border-color:var(--blue)}
+.trk{margin:12px 0 4px;display:flex;gap:10px;align-items:baseline;border-bottom:2px solid var(--edge);padding-bottom:2px}
+.wg{margin:8px 0 12px}.wh{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;text-align:left;background:var(--card);color:var(--ink);font-weight:400;border-left-width:8px;padding:6px 10px;min-height:48px;margin-bottom:6px}
+.wh.sel{outline:4px solid var(--edge);outline-offset:1px}.wh .sw{width:16px;height:16px;border-radius:4px;border:2px solid var(--edge)}
+.cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
+.cells .cell{aspect-ratio:1;min-height:0;min-width:0;padding:0;font-size:11px;border-radius:6px;position:relative;background:var(--c,#555);color:#fff;border:3px solid transparent;text-shadow:0 0 2px #000,0 0 2px #000;overflow:hidden}
+.cell.st-attention{border-color:var(--warnb)}.cell.st-attention::after,.cell.st-ready::after,.cell.st-post::after{position:absolute;top:0;right:0;font-size:11px;line-height:1;padding:1px 4px;border-radius:0 0 0 6px;text-shadow:none;color:#000;background:var(--warnb)}
+.cell.st-attention::after{content:"!"}.cell.st-ready{border-color:#fff;box-shadow:0 0 0 3px var(--acc)}.cell.st-ready::after{content:"\2192";background:#fff}
+.cell.st-post{background:repeating-linear-gradient(45deg,#7d8780 0 5px,#d4dad6 5px 10px);color:#000;text-shadow:none;border-color:#000}.cell.st-post::after{content:"S";background:#fff}
+.cell.sel{outline:4px solid var(--edge);outline-offset:1px;z-index:1}.cells .cell.e{background:transparent;border:2px dashed var(--line);cursor:default}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:8px 0}.leg span{display:inline-flex;gap:6px;align-items:center}.leg i{width:18px;height:18px;border-radius:4px;border:2px solid var(--edge);display:inline-block}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}.facts div{border:2px solid var(--line);border-radius:10px;padding:6px 10px}.facts b{display:block}
+.blk{border:2px solid var(--edge);border-radius:12px;padding:10px 12px;margin:12px 0}.blk h3{margin-top:0}
+.g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}.g .n{flex:1;min-width:190px}
+.act{border-bottom:2px dashed var(--line);padding:6px 0}.act label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;cursor:pointer}.act .n{flex:1;min-width:170px}
+.act .d{font-size:14px;color:var(--mute);margin:2px 0 4px 34px}.act details{margin:4px 0 4px 34px}
+details{border:2px solid var(--line);border-radius:10px;padding:4px 10px;margin:6px 0}summary{cursor:pointer;font-weight:700;min-height:40px;display:flex;align-items:center}
+.frm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.frm input[type=text]{flex:1;min-width:170px}.frm input[type=number]{width:96px}.frm input.u{width:110px}
+.team{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 12px}.team label{display:flex;gap:10px;align-items:center;min-height:44px}
+.wk{border:2px solid var(--edge);border-left-width:10px;border-radius:12px;padding:8px 12px;margin:8px 0}.wk.ws-IN_PROGRESS{border-left-color:var(--acc)}.wk.ws-PAUSED{border-left-color:var(--warnb);background:var(--warns);color:var(--warn)}.wk.ws-ASSIGNED{border-left-color:var(--blue)}.wk.ws-IDLE{border-left-color:var(--line)}
+.al{border:2px solid var(--warnb);background:var(--warns);color:var(--warn);border-radius:12px;padding:8px 12px;margin:8px 0}.al .k{color:var(--warn)}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:5px 8px;border-bottom:2px solid var(--line);font-size:14px;vertical-align:top}th{color:var(--mute)}.tw{overflow-x:auto}
+#login{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}#login .card{width:min(380px,100%);display:grid;gap:10px}#login label{display:grid;gap:3px;font-weight:700}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:50;max-width:92vw;font-weight:700}
+body.busy{cursor:progress}
+</style></head><body>
+<div id="top">
+<header>
+<h1>Propagation Manager</h1><span class="k">Ngapori Ranch · Bay 3</span><span class="sp"></span>
+<button class="alt" id="bMgr" type="button" data-a="mgr">Manager mode: off</button>
+<button class="alt sm" id="bTheme" type="button" data-a="theme">Night</button>
+</header>
+<div id="cbar" class="sync"><span class="dot"></span><b>Connecting…</b></div>
+</div>
+<div id="note" class="note hidden" role="alert"></div>
+<div id="kpi"></div>
+<div class="lay">
+<section class="card" id="left"><p class="k">Loading the propagation room…</p></section>
+<aside class="card" id="side"><div id="tabs" role="tablist"></div><div id="pane"></div></aside>
+</div>
+<div id="login" class="hidden" role="dialog" aria-modal="true" aria-label="Manager mode"><div class="card">
+<h2>Manager mode</h2><p class="k">Enter your manager PIN to dispatch, verify, close and override. Manager mode turns itself off after 15 minutes without use.</p>
+<label>Manager <span id="luw"></span></label>
+<label>PIN <input id="lp" type="password" inputmode="numeric" autocomplete="current-password"></label>
+<div id="lerr" class="note bad hidden" role="alert" style="margin:0"></div>
+<div class="row" style="margin:0"><button id="lgo" type="button" data-a="login">Turn on</button><button class="alt" type="button" data-a="loginx">Cancel</button></div></div></div>
+<div id="toast" class="hidden" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+const API_URL = "https://script.google.com/macros/s/AKfycbz7qyhFT5BRUpiqLCnjtT8gRX-UQ-I0lQhF__H6dgCU_Rql2WFOMuNm-YLXazi0Zrir_g/exec"; // same Apps Script web app as the assignment board (ends in /exec)
+const POLL_MS = 60000, IDLE_MS = 15 * 60000, STALE_MIN = 30, BAY_SQFT = 800;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = s => s ? new Date(String(s).slice(0, 10) + "T00:00:00").toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}) : "";
+const add = (iso, n) => new Date(Date.parse(iso) + n * 864e5).toISOString().slice(0, 10);
+const days = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+const localToday = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const col = c => `hsl(${[...String(c)].reduce((a, x) => a * 31 + x.charCodeAt(0), 7) % 360} 58% 30%)`;
+const clock = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}); };
+const when = s => { if (!s) return ""; const d = new Date(String(s).length <= 10 ? s + "T00:00:00" : s); return isNaN(d) ? esc(s) : d.toLocaleString(undefined, {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}); };
+const hm = ms => { const m = Math.max(0, Math.round(ms / 60000)); return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"; };
+const pf = p => p === "F" ? "Field" : p === "G" ? "Greenhouse" : p;
+const LS = {get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } },
+  set(k, v) { try { v === null || v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }};
+
+/* ---------- network ---------- */
+const hdr = {"Content-Type":"text/plain;charset=utf-8"};
+async function call(url, opt) {
+  let t; try { t = await (await fetch(url, opt)).text(); } catch (e) { throw new Error("No connection to the server."); }
+  let j; try { j = JSON.parse(t); } catch (e) { throw new Error("The server sent back a web page instead of data. Deploy the latest Code_pro.gs as a new version, then try again."); }
+  if (j.error) { if (/^AUTH:/.test(j.error) && M) exitManager("Manager session ended. Turn Manager mode on again."); throw new Error(j.error.replace(/^AUTH:\s*/, "")); }
+  return j;
+}
+async function get(p) { const go = () => call(API_URL + "?" + new URLSearchParams(p)); try { return await go(); } catch (e) { if (!/web page/.test(e.message)) throw e; await new Promise(r => setTimeout(r, 1200)); return go(); } }
+const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({...b, token: M ? M.token : undefined})});
+
+/* ---------- state ---------- */
+let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = LS.get("pm_session"), T = localToday(), SEL = null, RS = {};
+let TAB = "wave", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
+const PICK = new Set(), WPICK = new Set(), DRAFT = {}, LOADING = {};
+const nowMs = () => MODE === "live" ? Date.now() + OFFSET : (D ? D.now : Date.now());
+const canAct = () => !!M && MODE === "live";
+const ST = {occupied:{l:"In propagation", g:"●"}, ready:{l:"Transplant soon", g:"→"}, attention:{l:"Needs attention", g:"!"}, post:{l:"Post-transplant", g:"S"}, empty:{l:"Available", g:"○"}};
+const WS = {IN_PROGRESS:"In progress", PAUSED:"Paused", ASSIGNED:"Assigned", IDLE:"Idle"};
+const KIND = {DIRECT_CLOSE:"Direct close", GATE_OVERRIDE:"Gate override", LEAF_OVERRIDE:"First-leaf override", ALERT_RESOLVED:"Alert resolved", ASSIGN:"Assigned", REASSIGN:"Reassigned", UNASSIGN:"Removed"};
+
+/* ---------- derived data ---------- */
+const runs = () => D ? D.runs.filter(r => !r.error) : [];
+const flat = () => runs().flatMap(r => r.waves.map(w => ({r, w})));
+const trackOf = r => { const s = String(r.propLocation || ""), i = s.lastIndexOf(" · "); return i >= 0 ? s.slice(i + 3) : (s || "Unassigned"); };
+const gateOk = g => (g.completed && g.verified) || g.overridden;
+const leafOk = w => !!w.leaf && (w.leaf.outcome === "PASS" || w.leaf.outcome === "OVERRIDDEN");
+const openAlerts = () => D ? D.alerts.filter(a => a.status === "OPEN") : [];
+const postOpen = r => { const g = (r.gates || []).filter(x => x.scope === "post-transplant"); return g.length > 0 && !g.every(gateOk); };
+function leafDue(w, t) { const ph = (w.phases || []).find(p => p.phase === "Nursery" && p.days > 0); return !!ph && t >= ph.start; }
+function wst(r, w, t) {   // [status, label] of one wave on date t
+  if (t >= w.plant) return postOpen(r) && t < add(w.plant, 30) ? ["post", "Post-transplant: bench sanitizing not verified"] : ["done", "Planted"];
+  if (t < w.sow) return ["pend", "Not in the room yet · sow in " + days(t, w.sow) + " d"];
+  const why = [], pre = (r.gates || []).filter(g => g.scope === "pre-sowing");
+  if (!w.init) why.push("Not initiated");
+  if (pre.some(g => !gateOk(g))) why.push("Bench not verified ready");
+  if (!r.direct) { if (w.leaf && w.leaf.outcome === "FAIL") why.push("First-leaf check FAILED"); else if (!leafOk(w) && leafDue(w, t)) why.push("First-leaf check due"); }
+  if (openAlerts().some(a => a.run_id === r.runId)) why.push("Stall alert open");
+  if (why.length) return ["attention", why.join(" · ")];
+  const left = days(t, w.plant), ph = (w.phases || []).find(p => p.start <= t && t < p.end);
+  return left <= 3 ? ["ready", "Transplant in " + left + " d"] : ["occupied", "In propagation" + (ph ? " · " + ph.phase : "")];
+}
+function roomItems(t) { const o = []; flat().forEach(({r, w}) => { if (!(w.trays > 0)) return; const [k, l] = wst(r, w, t); if (k === "pend" || k === "done") return; o.push({r, w, k, l, track: trackOf(r)}); }); return o; }
+const badge = (k, l) => `<span class="badge st-${k}">${ST[k].g} ${esc(l || ST[k].l)}</span>`;
+
+/* ---------- snapshot + sync ---------- */
+function saveSnap() {
+  const o = {saved: SNAP, data: D};
+  if (!LS.set("pm_snap", o)) LS.set("pm_snap", {saved: SNAP, data: {...D, alerts: D.alerts.slice(-30), assignLog: [], mgrLog: D.mgrLog.slice(0, 20)}});
+}
+function loadSnap() { const s = LS.get("pm_snap"); if (s && s.data && s.data.runs) { D = s.data; SNAP = s.saved; return true; } return false; }
+async function load(quiet) {
+  if (MODE === "offline" && FORCED) return;
+  SYNCING = true; connBar();
+  try {
+    const d = await get({action:"monitor"});
+    D = d; OFFSET = d.now - Date.now(); MODE = "live"; SNAP = new Date().toISOString(); ERR = ""; saveSnap();
+  } catch (e) {
+    ERR = /Unknown action/.test(e.message) ? "The server has no manager console yet. Deploy the latest Code_pro.gs as a new version, then press Sync now." : e.message;
+    if (!D) loadSnap();
+    if (D) MODE = "offline";
+    if (!quiet) toast(ERR, true);
+  } finally { SYNCING = false; }
+  render(true);
+}
+function goOffline() { if (!D && !loadSnap()) return toast("No snapshot saved on this device yet. Sync once while online.", true); MODE = "offline"; FORCED = true; render(); }
+function goLive() { FORCED = false; MODE = "live"; load(); }
+function connBar() {
+  const el = $("cbar"), age = SNAP ? Math.round((Date.now() - Date.parse(SNAP)) / 60000) : 0;
+  if (SYNCING) { el.className = "sync"; el.innerHTML = `<span class="dot"></span><b>Syncing…</b>`; return; }
+  if (MODE === "live") { el.className = ""; el.innerHTML = `<span class="dot"></span><b>LIVE</b><span>Synced ${esc(clock(SNAP))} · auto-sync every 60 s</span><span class="sp"></span><button class="alt sm" type="button" data-a="sync">Sync now</button><button class="alt sm" type="button" data-a="offline">Work offline</button>`; return; }
+  el.className = age > STALE_MIN ? "off stale" : "off";
+  el.innerHTML = `<span class="dot"></span><b>OFFLINE SNAPSHOT</b><span>${SNAP ? "Saved " + esc(clock(SNAP)) + " · " + age + " min old" : "No snapshot"} · read-only${FORCED ? "" : " · retrying automatically"}</span><span class="sp"></span><button class="alt sm" type="button" data-a="live">Go live</button>`;
+}
+
+/* ---------- manager mode (PIN) ---------- */
+function openLogin() {
+  if (MODE !== "live") return toast("Go live first: Manager mode needs the server.", true);
+  const mg = D ? D.workers.filter(w => /^(manager|founder)$/i.test(w.role)) : [];
+  $("luw").innerHTML = mg.length ? `<select id="lu">${mg.map(w => `<option value="${esc(w.id)}">${esc(w.name)} (${esc(w.role)})</option>`).join("")}</select>` : `<input id="lu" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="User name">`;
+  $("lp").value = ""; $("lerr").classList.add("hidden"); $("login").classList.remove("hidden"); setTimeout(() => $("lp").focus(), 0);
+}
+async function doLogin() {
+  const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) { $("lerr").textContent = "Choose the manager and enter the PIN."; return $("lerr").classList.remove("hidden"); }
+  $("lgo").disabled = true;
+  try { const r = await post({action:"boardLogin", user:u, pin:p, device:navigator.userAgent}); $("lp").value = "";
+    M = {token:r.token, name:r.user.name, role:r.user.role, id:r.user.workerId}; LS.set("pm_session", M); $("login").classList.add("hidden"); LAST = Date.now(); render(); toast("Manager mode on: " + M.name); }
+  catch (e) { $("lp").value = ""; $("lerr").textContent = e.message; $("lerr").classList.remove("hidden"); }
+  finally { $("lgo").disabled = false; }
+}
+function exitManager(msg) { const t = M && M.token; M = null; LS.set("pm_session", null); if (t) { try { fetch(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({action:"logout", token:t})}).catch(() => {}); } catch (e) {} } render(true); if (msg) toast(msg); }
+function gate() {
+  if (MODE !== "live") { toast("Offline snapshot: changes are disabled. Go live first.", true); return false; }
+  if (!M) { toast("Turn on Manager mode (PIN) to do that.", true); openLogin(); return false; }
+  return true;
+}
+async function write(label, fn) {
+  BUSY++; document.body.classList.add("busy"); toast(label + "…");
+  try { return await fn(); } catch (e) { toast(e.message, true); return null; }
+  finally { BUSY--; if (!BUSY) document.body.classList.remove("busy"); }
+}
+function applyRun(rs) {   // a write returns the run's fresh state: keep it, and mirror first-leaf outcomes into the board data
+  RS[rs.runId] = rs; const r = D && D.runs.find(x => x.runId === rs.runId);
+  if (r && r.waves && rs.leaf) r.waves.forEach(w => { w.leaf = rs.leaf[w.wave] || null; });
+  if (r && r.gates) r.gates = rs.activities.filter(a => a.scope !== "crop-wave").map(a => ({id:a.id, name:a.name, scope:a.scope, completed:a.completed, verified:a.verified, overridden:a.overridden, assignee:a.assignee || "", completedBy:a.completedBy || "", overrideReason:a.overrideReason || ""}));
+}
+async function loadRun(id) { LOADING[id] = 1; try { RS[id] = await get({action:"run", runId:id}); } catch (e) { RS[id] = {runId:id, activities:[], leaf:{}, error:e.message}; toast(e.message, true); } delete LOADING[id]; render(true); }
+
+/* ---------- crew ---------- */
+function crewData() {
+  const byId = new Map(), byName = new Map(), all = [];
+  const mk = (id, name, role) => { const e = {id:String(id || ""), name, role:role || "", sess:[], tasks:[]}; all.push(e); if (e.id) byId.set(e.id, e); byName.set(String(name).toLowerCase(), e); return e; };
+  if (!D) return all;
+  D.workers.forEach(w => mk(w.id, w.name, w.role));
+  const find = (id, name) => (id && byId.get(String(id))) || byName.get(String(name || "").toLowerCase()) || (name ? mk("", name, "") : null);
+  D.sessions.forEach(s => { const e = find(s.workerId, s.by); if (e) e.sess.push(s); });
+  D.tasks.filter(t => !t.done).forEach(t => t.team.forEach((n, i) => { const e = find(t.teamIds[i], n); if (e) e.tasks.push(t); }));
+  all.forEach(e => { e.st = e.sess.some(s => !s.pausedAt) ? "IN_PROGRESS" : e.sess.length ? "PAUSED" : e.tasks.length ? "ASSIGNED" : "IDLE"; });
+  const pr = {PAUSED:0, IN_PROGRESS:1, ASSIGNED:2, IDLE:3};
+  return all.sort((a, b) => pr[a.st] - pr[b.st] || a.name.localeCompare(b.name));
+}
+const netMs = (s, now) => (s.pausedAt ? Date.parse(s.pausedAt) : (now || nowMs())) - Date.parse(s.startedAt) - (+s.pausedSec || 0) * 1000;
+const tNet = s => `<b data-timer="net" data-start="${esc(s.startedAt)}" data-ps="${+s.pausedSec || 0}" data-pa="${esc(s.pausedAt)}">${hm(netMs(s))}</b>`;
+const tSince = iso => `<b data-timer="since" data-since="${esc(iso)}">${hm(nowMs() - Date.parse(iso))}</b>`;
+function tick() { const now = nowMs(); document.querySelectorAll("[data-timer]").forEach(el => { const d = el.dataset; el.textContent = d.timer === "net" ? hm(netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now)) : hm(now - Date.parse(d.since)); }); }
+function sessLine(s) {
+  const stall = /stall/i.test(s.pauseReason);
+  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}</div>`;
+}
+
+/* ---------- header, KPIs ---------- */
+function header() {
+  $("bMgr").textContent = M ? "Manager: " + M.name + " · Exit" : "Manager mode: off"; $("bMgr").className = M ? "" : "alt";
+  $("bTheme").textContent = document.documentElement.dataset.theme === "night" ? "Sun" : "Night";
+  document.documentElement.style.setProperty("--hh", $("top").offsetHeight + "px");
+}
+function kpis() {
+  if (!D) { $("kpi").innerHTML = ""; return; }
+  const cap = Math.floor(BAY_SQFT / SQ), inR = RI.filter(i => i.k !== "post").reduce((n, i) => n + i.w.trays, 0), att = RI.filter(i => i.k === "attention").length;
+  const aw = runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0), st = openAlerts().length, on = D.sessions.filter(s => !s.pausedAt).length, pa = D.sessions.length - on;
+  const k = (a, big, lab, hot, tab) => `<button type="button" class="kp ${hot ? "hot" : ""}" ${a}><b>${big}</b>${lab}</button>`;
+  $("kpi").innerHTML = k('data-a="filt" data-f="all"', `${inR}<span class="k"> / ${cap}</span>`, "Trays in room (" + fmt(T) + ")", inR > cap)
+    + k('data-a="filt" data-f="attention"', att, "Waves needing attention", att > 0) + k('data-a="tab" data-tab="wave"', aw, "Done, awaiting verification", aw > 0)
+    + k('data-a="tab" data-tab="watch"', st, "Open stall alerts", st > 0) + k('data-a="tab" data-tab="crew"', on + (pa ? ` <span class="k">+${pa} paused</span>` : ""), "Sessions running", false);
+}
+
+/* ---------- matrix (left) ---------- */
+function matrix() {
+  const el = $("left"); if (!D) { el.innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
+  const cap = Math.max(1, Math.floor(BAY_SQFT / SQ)), inR = RI.filter(i => i.k !== "post"), post = RI.filter(i => i.k === "post");
+  const tIn = inR.reduce((n, i) => n + i.w.trays, 0), tPost = post.reduce((n, i) => n + i.w.trays, 0), free = Math.max(0, cap - tIn - tPost), over = tIn + tPost - cap;
+  const cnt = {all:tIn + tPost + free, empty:free, occupied:RI.filter(i => i.k === "occupied" || i.k === "ready").reduce((n, i) => n + i.w.trays, 0), attention:RI.filter(i => i.k === "attention").reduce((n, i) => n + i.w.trays, 0), post:tPost};
+  const flt = [["all", "All"], ["empty", "Available"], ["occupied", "Occupied"], ["attention", "Needs attention"], ["post", "Post-transplant"]];
+  const vis = RI.filter(i => (FILT === "all" || (FILT === "occupied" ? i.k === "occupied" || i.k === "ready" : FILT === i.k)) && (!CF || i.r.crop === CF));
+  const crops = [...new Map(runs().map(r => [r.crop, r.cropName])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+  const tracks = [...new Set(vis.map(i => i.track))].sort();
+  const sel = (i, n) => SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave;
+  const grp = i => { const c = col(i.r.crop), s = sel(i);
+    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> W${i.w.wave} · ${i.w.trays} trays ${badge(i.k, i.l)}</button>
+    <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}">${esc(i.r.crop)}</button>`).join("")}</div></div>`; };
+  el.innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Propagation room</h2><span class="sp"></span>
+    <button class="alt sm" type="button" data-a="day" data-d="-1" aria-label="Previous day">‹</button><input type="date" id="day" value="${T}" aria-label="Date"><button class="alt sm" type="button" data-a="day" data-d="1" aria-label="Next day">›</button><button class="alt sm" type="button" data-a="day" data-d="0">Today</button></div>
+  <p><b>${tIn}</b> of ${cap} trays in the room on ${fmt(T)}${tPost ? ` · <b>${tPost}</b> bench slots awaiting sanitizing` : ""} · ${free} available${over > 0 ? ` · <b style="color:var(--bad)">${over} over capacity</b>` : ""}</p>
+  <div class="chips" role="group" aria-label="Status filter">${flt.map(([v, l]) => `<button type="button" class="${FILT === v ? "on" : "alt"}" data-a="filt" data-f="${v}">${l} · ${cnt[v]}</button>`).join("")}</div>
+  <div class="row"><label class="k">Crop <select id="cf"><option value="">All crops</option>${crops.map(([c, n]) => `<option value="${esc(c)}" ${c === CF ? "selected" : ""}>${esc(n)} (${esc(c)})</option>`).join("")}</select></label>
+    <label class="k">Sq ft per tray <input type="number" id="sq" min="0.5" step="0.05" value="${SQ}" style="width:90px"></label></div>
+  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : 0), n = l.reduce((s, i) => s + i.w.trays, 0);
+    return `<div class="trk"><h3 style="margin:0">Track ${esc(t)}</h3><span class="k">${n} trays shown</span></div>${l.map(grp).join("")}`; }).join("")}
+  ${(FILT === "all" || FILT === "empty") && !CF ? `<div class="trk"><h3 style="margin:0">Available benches</h3><span class="k">${free} tray slots free in Bay 3</span></div><div class="cells">${Array.from({length:Math.min(free, 600)}, () => `<span class="cell e"></span>`).join("")}</div>` : ""}
+  ${!vis.length && FILT !== "empty" ? `<p class="k">Nothing matches this filter on ${fmt(T)}.</p>` : ""}
+  <div class="leg"><span><i style="background:#555"></i>In propagation ●</span><span><i style="background:#555;border-color:var(--warnb)"></i>Needs attention !</span><span><i style="background:#555;box-shadow:0 0 0 2px var(--acc)"></i>Transplant ≤ 3 d →</span><span><i style="background:repeating-linear-gradient(45deg,#7d8780 0 4px,#d4dad6 4px 8px)"></i>Post-transplant S</span><span><i style="border-style:dashed"></i>Available</span></div>
+  <p class="k">Capacity = ${BAY_SQFT} sq ft Bay 3 bench limit (Infra_Field) ÷ sq ft per tray. Tray colors are crops. Each block is one wave; tap a block or a tray to dispatch it. Post-transplant slots stay held until bench sanitizing (ACT-607) is verified or overridden.</p>`;
+}
+
+/* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
+const statusOf = a => a.overridden ? "Overridden" : a.verified ? "Verified" : a.completed ? "Done, awaiting verification" : a.sessions && a.sessions.length ? "In progress" : a.assignee ? "Assigned" : "Not assigned";
+const dk = (...p) => p.join("|");
+const dv = k => esc(DRAFT[k] || "");
+function ctls(a, r, w, gateCard) {   // manager controls for one activity
+  const run = r.runId, id = a.id, gate = a.scope !== "crop-wave", c = [];
+  if (a.completed && !a.verified && !a.overridden) c.push(`<div class="frm"><input type="text" data-d="${dk("n", run, id)}" value="${dv(dk("n", run, id))}" placeholder="Verification notes (optional)" aria-label="Verification notes for ${esc(id)}"><button type="button" class="sm" data-a="verify" data-id="${esc(id)}">Verify</button></div>`);
+  if (!a.completed) c.push(`<details ${gateCard ? "" : ""}><summary>Direct close</summary><p class="k">Marks it done without a worker session. The reason is logged.</p><div class="frm"><input type="text" data-d="${dk("c", run, id)}" value="${dv(dk("c", run, id))}" placeholder="Reason (required)" aria-label="Reason for closing ${esc(id)}">
+    ${a.requiresCount ? `<input type="number" min="0" step="any" data-d="${dk("cc", run, id)}" value="${dv(dk("cc", run, id))}" placeholder="Qty" aria-label="Quantity"><input class="u" type="text" data-d="${dk("cu", run, id)}" value="${dv(dk("cu", run, id))}" placeholder="Unit" aria-label="Unit">` : ""}
+    <button type="button" class="alt sm" data-a="close" data-id="${esc(id)}">Close it</button></div></details>`);
+  if (gate && !a.verified && !a.overridden) c.push(`<details><summary>Override gate</summary><p class="k">Counts the gate as cleared without completing and verifying it. The reason is logged and cannot be undone here.</p><div class="frm"><input type="text" data-d="${dk("o", run, id)}" value="${dv(dk("o", run, id))}" placeholder="Reason (required)" aria-label="Override reason for ${esc(id)}"><button type="button" class="dng sm" data-a="override" data-id="${esc(id)}">Override</button></div></details>`);
+  return c.join("");
+}
+function gateRow(a, r, w) {
+  const ok = gateOk(a), bits = [];
+  if (a.completed) bits.push(`Completed ${when(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
+  if (a.verified) bits.push(`Verified ${when(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
+  if (a.overridden) bits.push(`<b>Overridden</b> by ${esc(a.overrideBy || "manager")}: ${esc(a.overrideReason)}`);
+  return `<div class="act"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}</span><span class="badge ${ok ? "ok" : a.completed ? "wait" : "open"}">${ok ? "✓" : a.completed ? "!" : "○"} ${esc(statusOf(a))}</span></div>
+    ${a.assignee ? `<div class="d">Team: ${esc(String(a.assignee).replace(/;\s*/g, ", "))}</div>` : ""}${bits.length ? `<div class="d">${bits.join("<br>")}</div>` : ""}<div style="margin-left:0">${ctls(a, r, w, true)}</div></div>`;
+}
+function gatesCard(r, w, rs) {
+  if (r.direct && !(r.gates || []).length) return `<section class="blk"><h3>Stage gates</h3><p class="k">None: this crop is direct-seeded or a crown, so it skips the nursery.</p></section>`;
+  const list = rs ? rs.activities.filter(a => a.scope !== "crop-wave") : (r.gates || []);
+  const pre = list.filter(a => a.scope === "pre-sowing"), post = list.filter(a => a.scope === "post-transplant"), okN = x => x.filter(gateOk).length;
+  const pend = list.filter(a => a.completed && !a.verified && !a.overridden).length;
+  const grp = (t, x) => x.length ? `<h3>${t} · ${okN(x)} of ${x.length} cleared</h3>${x.map(a => gateRow(a, r, w)).join("")}` : "";
+  return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">Stage gates</h3><span class="sp"></span>${pend ? `<button type="button" data-a="verifyall">Verify bed ready (${pend} done)</button>` : ""}</div>
+    <p class="k">Pre-sowing steps must be done and verified, or overridden with a reason, before any later activity can start. Run ${esc(r.runId)}: ${(r.acts && r.acts.gatesOk) != null ? r.acts.gatesOk + " of " + r.acts.gates : "?"} cleared.</p>
+    ${grp("Pre-sowing: bench ready for sowing", pre)}${grp("Post-transplant: bench sanitizing", post)}${!rs && !list.length ? `<p class="k">Loading…</p>` : ""}</section>`;
+}
+function leafCard(r, w, rs) {
+  if (r.direct) return `<section class="blk"><h3>First-leaf check</h3><p class="k">Not applicable: ${esc(r.cropName)} is direct-seeded or a crown.</p></section>`;
+  const lf = w.leaf, o = lf ? lf.outcome : "", ph = (w.phases || []).find(p => p.phase === "Nursery" && p.days > 0);
+  const feeds = rs ? rs.activities.filter(a => a.feed).map(a => a.id + " " + a.name) : (D.feeds || []);
+  const b = o === "PASS" ? `<span class="badge ok">✓ Pass</span>` : o === "OVERRIDDEN" ? `<span class="badge wait">! Overridden</span>` : o === "FAIL" ? `<span class="badge bad">✕ Fail</span>` : `<span class="badge open">○ Pending</span>`;
+  const k = dk("l", r.runId, w.wave), kk = dk("lo", r.runId, w.wave);
+  return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">First-leaf check · wave ${w.wave}</h3>${b}</div>
+    <p class="k">Growth feeds (${feeds.map(esc).join(", ") || "none"}) cannot start for this wave until the outcome is Pass or a manager overrides it.${ph ? " Check is due from " + fmt(ph.start) + " (germination ends)." : ""}</p>
+    ${lf ? `<p class="k">Last set ${when(lf.at)}${lf.by ? " by " + esc(lf.by) : ""}${lf.notes ? " · " + esc(lf.notes) : ""}</p>` : ""}
+    <div class="frm"><input type="text" data-d="${k}" value="${dv(k)}" placeholder="Notes (optional)" aria-label="First-leaf notes"><button type="button" data-a="leaf" data-o="PASS">Pass</button><button type="button" class="alt" data-a="leaf" data-o="FAIL">Fail</button><button type="button" class="alt sm" data-a="leaf" data-o="PENDING">Reset</button></div>
+    ${o === "PASS" || o === "OVERRIDDEN" ? "" : `<details><summary>Override first-leaf check</summary><div class="frm"><input type="text" data-d="${kk}" value="${dv(kk)}" placeholder="Reason (required)" aria-label="Override reason"><button type="button" class="dng sm" data-a="leaf" data-o="OVERRIDDEN">Override</button></div></details>`}</section>`;
+}
+function dispatch(r, w, rs) {
+  if (!rs) return `<section class="blk"><h3>Dispatch</h3><p class="k">Loading activities…</p></section>`;
+  if (!rs.activities.length) return `<section class="blk"><h3>Dispatch</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
+  const by = {}; rs.activities.forEach(a => (by[a.phase || "Required gate activities"] = by[a.phase || "Required gate activities"] || []).push(a)); const ph = Object.entries(by);
+  const crew = new Map(crewData().map(e => [e.id, e]));
+  const row = a => {
+    const gate = a.scope !== "crop-wave", fb = a.feed && !r.direct && !leafOk(w), tr = a.history || [];
+    return `<div class="act"><label><input type="checkbox" data-pick="${esc(a.id)}" ${PICK.has(a.id) ? "checked" : ""} aria-label="Select ${esc(a.name)}"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge st-attention">gate</span>' : ""}</span><span class="k">${esc(statusOf(a))}${a.assignee ? " · " + esc(String(a.assignee).replace(/;\s*/g, ", ")) : ""}</span></label>
+      ${a.locked ? `<div class="d"><span class="badge wait">! Locked until the stage gates are cleared</span></div>` : ""}${fb ? `<div class="d"><span class="badge bad">✕ Blocked: first-leaf check for wave ${w.wave} is not Pass</span></div>` : ""}
+      ${a.sessions && a.sessions.length ? `<div class="d">Working now: ${a.sessions.map(s => esc(s.by) + " (wave " + s.wave + ")").join(", ")}</div>` : ""}
+      <div class="d">${a.assignee ? `<button type="button" class="alt sm" data-a="reassign" data-id="${esc(a.id)}">Reassign</button>` : ""}</div>
+      ${tr.length ? `<details><summary>Trail (${tr.length})</summary>${tr.slice().reverse().map(h => `<div class="k">${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}</div>`).join("")}</details>` : ""}
+      ${a.scope === "crop-wave" ? `<details><summary>Manager actions</summary>${ctls(a, r, w, false) || `<p class="k">Nothing to do.</p>`}</details>` : ""}</div>`; };
+  const a = PICK.size, n = WPICK.size;
+  return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; the change is kept in its trail.</p>
+    <div class="row"><button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button><button class="alt sm" type="button" data-a="pickall" data-m="all">Tick all</button><button class="alt sm" type="button" data-a="pickall" data-m="none">Clear</button></div>
+    ${ph.map(([p, l], i) => `<details ${l.some(x => !x.assignee && !x.completed) ? "open" : ""}><summary>${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned</summary>${l.map(row).join("")}</details>`).join("")}
+    <h3 id="wlist">Workers</h3>${D.workers.length ? `<div class="team">${D.workers.map(x => { const e = crew.get(String(x.id)); return `<label><input type="checkbox" data-wk="${esc(x.id)}" ${WPICK.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${e && e.st !== "IDLE" ? " · " + WS[e.st].toLowerCase() + (e.tasks.length ? ", " + e.tasks.length + " open" : "") : ""}</span></span></label>`; }).join("")}</div>` : `<p class="k">No active workers in USERS.</p>`}
+    <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
+}
+function triage() {
+  const att = RI.filter(i => i.k === "attention").slice(0, 8), aw = runs().filter(r => r.acts && r.acts.awaiting > 0);
+  return `<h2>Wave</h2><p class="k">Tap a wave block or tray in the matrix to see its detail, clear its gates, set its first-leaf check and dispatch work.</p>
+    ${att.length ? `<h3>Needs attention</h3>${att.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b><br><span class="k">${esc(i.l)}</span></span><button class="alt sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("")}` : `<p class="k">No wave in the room needs attention on ${fmt(T)}.</p>`}
+    ${aw.length ? `<h3>Awaiting verification</h3>${aw.map(r => `<div class="g"><span class="n"><b>${esc(r.cropName)} · ${esc(r.runId)}</b><br><span class="k">${r.acts.awaiting} done, not verified</span></span><button class="alt sm" type="button" data-sel="${esc(r.runId)}|${r.waves[0].wave}">Open</button></div>`).join("")}` : ""}`;
+}
+function paneWave() {
+  const r = SEL && runs().find(x => x.runId === SEL.runId), w = r && r.waves.find(x => x.wave === SEL.wave);
+  if (!w) return triage();
+  const [k, l] = wst(r, w, T), rs = RS[r.runId];
+  if (!rs && !LOADING[r.runId]) setTimeout(() => !RS[r.runId] && !LOADING[r.runId] && loadRun(r.runId), 0);
+  return `<div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · wave ${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
+  <div class="facts"><div><span class="k">Sow date</span><b>${fmt(w.sow)}</b></div><div><span class="k">Transplant (DOB)</span><b>${fmt(w.plant)}</b><span class="k">${days(T, w.plant) >= 0 ? "in " + days(T, w.plant) + " d" : -days(T, w.plant) + " d ago"}</span></div>
+  <div><span class="k">Trays</span><b>${w.trays || "None (direct)"}${r.trayCells ? " · " + r.trayCells + "-cell" : ""}</b></div><div><span class="k">Material</span><b>${w.material ? w.material.toLocaleString() : "Bulk"}</b></div>
+  <div><span class="k">Propagation</span><b>${esc(r.propLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(r.location)}${r.bed ? " · bed " + esc(r.bed) : ""}</b></div>
+  <div><span class="k">Run · platform</span><b>${esc(r.runId)} · ${pf(r.platform)}${r.runType === "ADDITIONAL" ? " (unplanned)" : ""}</b></div><div><span class="k">Initiated</span><b>${w.init ? esc(w.init.by) + ", " + new Date(w.init.at).toLocaleDateString() : "Not yet"}</b></div></div>
+  ${canAct() ? "" : `<div class="note" style="margin:10px 0">View only. ${MODE === "live" ? "Turn on Manager mode to act." : "Go live and turn on Manager mode to act."}</div>`}
+  ${w.init ? "" : `<div class="row"><button type="button" data-a="init">Initiate this wave</button><span class="k">Adds every activity for the run so work can be dispatched.</span></div>`}
+  ${(w.phases || []).length ? `<details><summary>Propagation phases</summary><table><tr><th>Phase</th><th>Days</th><th>Starts</th><th>Ends</th></tr>${w.phases.map(p => `<tr ${p.start <= T && T < p.end ? 'style="font-weight:700"' : ""}><td>${esc(p.phase)}</td><td>${p.days}</td><td>${fmt(p.start)}</td><td>${fmt(p.end)}</td></tr>`).join("")}</table></details>` : ""}
+  ${gatesCard(r, w, rs)}${leafCard(r, w, rs)}${dispatch(r, w, rs)}`;
+}
+
+/* ---------- crew pane ---------- */
+function paneCrew() {
+  const c = crewData(), vb = (v, l) => `<button type="button" class="${CREW === v ? "on" : "alt"}" data-a="crewv" data-v="${v}">${l}</button>`;
+  const head = `<div class="row" style="margin-top:0"><h2 style="margin:0">Crew</h2><span class="sp"></span>${vb("worker", "By worker")}${vb("loc", "By location")}</div>`;
+  const card = e => `<div class="wk ws-${e.st}"><div class="row" style="margin:0"><b>${esc(e.name)}</b><span class="k">${esc(e.role)}</span><span class="sp"></span><span class="badge ws-${e.st}">${WS[e.st]}</span></div>
+    ${e.sess.map(sessLine).join("")}${e.tasks.length ? `<div class="k">${e.tasks.length} open: ${e.tasks.slice(0, 3).map(t => esc(t.activity) + " (" + esc(t.cropCode || t.crop) + ")").join(", ")}${e.tasks.length > 3 ? " +" + (e.tasks.length - 3) + " more" : ""}</div>` : ""}
+    ${(e.sess[0] || e.tasks[0]) ? `<div class="row" style="margin-bottom:0"><button type="button" class="alt sm" data-sel="${esc((e.sess[0] || e.tasks[0]).runId)}|${e.sess[0] ? e.sess[0].wave : 1}">Open task</button></div>` : ""}</div>`;
+  if (CREW === "worker") return head + (c.length ? c.map(card).join("") : `<p class="k">No workers found.</p>`);
+  const locOf = e => e.sess[0] ? e.sess[0].location : e.tasks[0] ? e.tasks[0].loc : "No location";
+  const by = {}; c.filter(e => e.st !== "IDLE").forEach(e => (by[locOf(e)] = by[locOf(e)] || []).push(e));
+  const idle = c.filter(e => e.st === "IDLE");
+  return head + (Object.keys(by).length ? Object.keys(by).sort().map(l => `<h3>${esc(l)}</h3>${by[l].map(card).join("")}`).join("") : `<p class="k">Nobody is assigned or working right now.</p>`) + (idle.length ? `<h3>Idle</h3><p class="k">${idle.map(e => esc(e.name)).join(", ")}</p>` : "");
+}
+
+/* ---------- watchguard pane ---------- */
+function milestones() {
+  const t = localToday(), o = [];
+  flat().forEach(({r, w}) => {
+    if (!(w.trays > 0) || t >= w.plant) return;
+    const d = days(t, w.sow), nm = r.cropName + " W" + w.wave, sel = r.runId + "|" + w.wave;
+    if (!w.init && d <= 14) o.push({d, t:"Not initiated", n:nm, sel, bad:d <= 0, when:d < 0 ? "Sow date passed " + (-d) + " d ago" : d === 0 ? "Sow today" : "Sow in " + d + " d"});
+    if (!w.init || t < w.sow) return;
+    (w.phases || []).forEach(p => { if (p.days > 0 && p.start <= t && t < p.end) o.push({d:days(t, p.end), t:p.phase + " ends", n:nm, sel, when:fmt(p.end)}); });
+    if (!r.direct && !leafOk(w) && leafDue(w, t)) o.push({d:0, t:"First-leaf check due", n:nm, sel, bad:!!(w.leaf && w.leaf.outcome === "FAIL"), when:w.leaf && w.leaf.outcome === "FAIL" ? "Failed, needs a decision" : "Not recorded"});
+    o.push({d:days(t, w.plant), t:"Transplant due", n:nm, sel, when:fmt(w.plant)});
+  });
+  return o.filter(x => x.d <= 7).sort((a, b) => a.d - b.d).slice(0, 30);
+}
+function paneWatch() {
+  const al = openAlerts(), done = D.alerts.filter(a => a.status === "RESOLVED").slice(-8).reverse(), ms = milestones();
+  const aRow = a => `<div class="al"><b>${esc(a.reason)}</b> · ${esc(a.worker_name)}<br>${esc(a.activity_name)} · ${esc(a.crop_code)} · ${esc(a.location)}<br>Open for ${tSince(a.created_at)}${a.note ? `<br><span class="k">${esc(a.note)}</span>` : ""}
+    <details><summary>Resolve</summary><p class="k">Records the exception as handled. It does not resume the worker's paused session.</p><div class="frm"><input type="text" data-d="${dk("ra", a.alert_id)}" value="${dv(dk("ra", a.alert_id))}" placeholder="What was done (required)" aria-label="Resolution note"><button type="button" class="sm" data-a="resolve" data-id="${esc(a.alert_id)}">Resolve</button></div></details></div>`;
+  return `<h2>Watchguard</h2><h3>Open stall alerts · ${al.length}</h3>${al.length ? al.map(aRow).join("") : `<p class="k">No open alerts.</p>`}
+    <h3>Milestones within 7 days of today</h3>${ms.length ? ms.map(x => `<div class="g"><span class="badge ${x.bad ? "bad" : x.d <= 2 ? "wait" : "open"}">${x.d < 0 ? "Overdue" : x.d === 0 ? "Today" : "In " + x.d + " d"}</span><span class="n"><b>${esc(x.n)}</b> · ${esc(x.t)}<br><span class="k">${esc(x.when)}</span></span><button type="button" class="alt sm" data-sel="${esc(x.sel)}">Open</button></div>`).join("") : `<p class="k">Nothing due in the next 7 days.</p>`}
+    ${done.length ? `<details><summary>Recently resolved (${done.length})</summary>${done.map(a => `<div class="k" style="padding:4px 0">${when(a.resolved_at)} · ${esc(a.worker_name)} · ${esc(a.activity_name)} · ${esc(a.reason)}${a.stall_min !== "" ? " · " + esc(a.stall_min) + " min" : ""}</div>`).join("")}</details>` : ""}`;
+}
+function paneLog() {
+  return `<h2>Log</h2><h3>Manager actions</h3>${D.mgrLog.length ? `<div class="tw"><table><tr><th>When</th><th>Action</th><th>Where</th><th>Reason</th><th>By</th></tr>${D.mgrLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)}${x.wave ? " W" + esc(x.wave) : ""}${x.activity_id ? " · " + esc(x.activity_id) : ""}</td><td>${esc(x.reason)}</td><td>${esc(x.by)}</td></tr>`).join("")}</table></div>` : `<p class="k">No manager actions logged yet.</p>`}
+    <h3>Assignment trail</h3>${D.assignLog.length ? `<div class="tw"><table><tr><th>When</th><th>Change</th><th>Run · activity</th><th>From</th><th>To</th><th>By</th></tr>${D.assignLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)} · ${esc(x.activity_id)}</td><td>${esc(x.from_name)}</td><td>${esc(x.to_name)}</td><td>${esc(x.by)}</td></tr>`).join("")}</table></div>` : `<p class="k">No assignments yet.</p>`}`;
+}
+function side() {
+  if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
+  const tabs = [["wave", "Wave", ""], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
+  $("tabs").innerHTML = tabs.map(([v, l, n]) => `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-a="tab" data-tab="${v}">${l}${n ? " (" + n + ")" : ""}</button>`).join("");
+  $("pane").innerHTML = TAB === "wave" ? paneWave() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
+}
+
+/* ---------- render ---------- */
+function render(soft) {
+  if (ERR && !D) { $("note").textContent = ERR; $("note").classList.remove("hidden"); } else if (MODE === "live") $("note").classList.add("hidden");
+  else if (ERR) { $("note").textContent = ERR + " Showing the last snapshot."; $("note").classList.remove("hidden"); }
+  if (D) { RI = roomItems(T); }
+  header(); connBar(); kpis(); matrix();
+  const ae = document.activeElement; if (!(soft && ae && $("pane").contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))) side();
+}
+function toast(m, bad) { const el = $("toast"); el.textContent = m; el.classList.remove("hidden"); el.style.background = bad ? "var(--bad)" : ""; el.style.color = bad ? "#fff" : ""; clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), bad ? 7000 : 2800); }
+function pick(id, w) { if (!SEL || SEL.runId !== id) { PICK.clear(); WPICK.clear(); } SEL = {runId:id, wave:+w}; TAB = "wave"; }
+
+/* ---------- manager actions ---------- */
+const cur = () => { const r = SEL && runs().find(x => x.runId === SEL.runId); return r ? {r, w: r.waves.find(x => x.wave === SEL.wave), rs: RS[r.runId]} : null; };
+async function done(rs, msg) { if (rs) { applyRun(rs); toast(msg); } render(); load(true); }
+async function doVerify(id) {
+  const c = cur(); if (!c) return; const notes = (DRAFT[dk("n", c.r.runId, id)] || "").trim();
+  const rs = await write("Verifying " + id, () => post({action:"verify", runId:c.r.runId, activityId:id, notes})); if (rs) delete DRAFT[dk("n", c.r.runId, id)]; done(rs, "Verified " + id);
+}
+async function doVerifyAll() {
+  const c = cur(); if (!c || !c.rs) return; const todo = c.rs.activities.filter(a => a.scope !== "crop-wave" && a.completed && !a.verified && !a.overridden);
+  if (!todo.length || !confirm(`Verify ${todo.length} completed gate step${todo.length > 1 ? "s" : ""} as ready?\n\n${todo.map(a => a.id + " " + a.name).join("\n")}\n\nThis is recorded under ${M.name}.`)) return;
+  let rs = null, n = 0;
+  for (const a of todo) { rs = await write(`Verifying ${a.id} (${n + 1} of ${todo.length})`, () => post({action:"verify", runId:c.r.runId, activityId:a.id, notes:"Bed verified ready"})); if (!rs) break; n++; applyRun(rs); }
+  done(rs, n + " gate step" + (n > 1 ? "s" : "") + " verified");
+}
+async function doClose(id) {
+  const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("c", run, id)] || "").trim(), a = c.rs && c.rs.activities.find(x => x.id === id);
+  if (!why) return toast("Type the reason for the direct close first. It is required and is logged.", true);
+  const count = (DRAFT[dk("cc", run, id)] || "").trim(), unit = (DRAFT[dk("cu", run, id)] || "").trim();
+  if (a && a.requiresCount && (!(+count > 0) || !unit)) return toast(a.name + " needs a quantity and unit.", true);
+  if (!confirm(`Close ${id} on run ${run} without a worker session?\n\nReason: ${why}`)) return;
+  const rs = await write("Closing " + id, () => post({action:"mgrClose", runId:run, activityId:id, wave:c.w.wave, reason:why, count, unit}));
+  if (rs) ["c", "cc", "cu"].forEach(p => delete DRAFT[dk(p, run, id)]); done(rs, "Closed " + id);
+}
+async function doOverride(id) {
+  const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("o", run, id)] || "").trim();
+  if (!why) return toast("Type the reason for the override first. It is required and is logged.", true);
+  if (!confirm(`Override ${id} on run ${run}?\n\nThe gate counts as cleared without being completed and verified, so it stops blocking the run. Your reason is logged. The console cannot undo an override.`)) return;
+  const rs = await write("Overriding " + id, () => post({action:"override", runId:run, activityId:id, reason:why})); if (rs) delete DRAFT[dk("o", run, id)]; done(rs, "Overridden " + id);
+}
+async function doLeaf(o) {
+  const c = cur(); if (!c || !c.w) return; const run = c.r.runId, wave = c.w.wave;
+  const notes = ((o === "OVERRIDDEN" ? DRAFT[dk("lo", run, wave)] : DRAFT[dk("l", run, wave)]) || "").trim();
+  if (o === "OVERRIDDEN" && !notes) return toast("Type the reason for the override first. It is required and is logged.", true);
+  if (o === "OVERRIDDEN" && !confirm(`Override the first-leaf check for ${c.r.cropName} wave ${wave}?\n\nGrowth feeds will start without a Pass. Your reason is logged.`)) return;
+  const rs = await write("Saving first-leaf check", () => post({action:"firstLeaf", runId:run, wave, outcome:o, notes}));
+  if (rs) { delete DRAFT[dk("l", run, wave)]; delete DRAFT[dk("lo", run, wave)]; } done(rs, o === "PENDING" ? "First-leaf check reset" : "First-leaf check: " + o.toLowerCase());
+}
+async function doAssign() {
+  const c = cur(); if (!c || !c.rs) return; const ids = [...PICK], wk = [...WPICK];
+  const had = c.rs.activities.filter(a => PICK.has(a.id) && a.assignee), live = c.rs.activities.filter(a => PICK.has(a.id) && a.sessions && a.sessions.length);
+  if (had.length && !confirm(`${had.length} of the ticked activities already ${had.length > 1 ? "have" : "has"} a team. Assigning replaces ${had.length > 1 ? "those teams" : "that team"}. The change is kept in the assignment trail.` + (live.length ? `\n\n${live.length} ${live.length > 1 ? "have" : "has"} a worker mid-session. They can still close it.` : ""))) return;
+  const rs = await write(`Assigning ${ids.length} activit${ids.length > 1 ? "ies" : "y"}… this can take up to a minute`, () => post({action:"assign", runId:c.r.runId, activityIds:ids, workerIds:wk, due:$("due") ? $("due").value : ""}));
+  if (rs) { PICK.clear(); } done(rs, "Assigned");
+}
+async function doInit() {
+  const c = cur(); if (!c || !c.w) return;
+  const r = await write("Initiating wave… this can take 10 to 20 seconds", () => post({action:"initWaves", runId:c.r.runId, waves:[c.w.wave]}));
+  if (r) { c.w.init = {at:new Date().toISOString(), by:M.name}; delete RS[c.r.runId]; toast("Wave initiated"); } render(); load(true);
+}
+async function doResolve(id) {
+  const note = (DRAFT[dk("ra", id)] || "").trim(); if (!note) return toast("Type what was done first. It is required and is logged.", true);
+  const r = await write("Resolving alert", () => post({action:"resolveAlert", alertId:id, note})); if (r) { delete DRAFT[dk("ra", id)]; toast("Alert resolved"); } render(); load(true);
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  LAST = Date.now(); const b = e.target.closest("[data-a],[data-sel]"); if (!b) return; const d = b.dataset;
+  if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); if (window.innerWidth <= 980) $("side").scrollIntoView({behavior:"smooth", block:"start"}); return; }
+  switch (d.a) {
+    case "sync": load(); break; case "offline": goOffline(); break; case "live": goLive(); break;
+    case "mgr": M ? exitManager("Manager mode off") : openLogin(); break;
+    case "login": doLogin(); break; case "loginx": $("login").classList.add("hidden"); break;
+    case "theme": { const n = document.documentElement.dataset.theme === "night" ? "sun" : "night"; document.documentElement.dataset.theme = n; LS.set("pm_theme", n); header(); break; }
+    case "tab": TAB = d.tab; side(); break;
+    case "filt": FILT = d.f; render(true); break;
+    case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
+    case "crewv": CREW = d.v; side(); break;
+    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (d.m === "all" || (d.m === "un" && !a.assignee)) PICK.add(a.id); }); side(); } break; }
+    case "reassign": { const c = cur(); const a = c && c.rs && c.rs.activities.find(x => x.id === d.id); if (a) { PICK.clear(); PICK.add(a.id); WPICK.clear(); (a.assigneeIds || []).forEach(i => WPICK.add(String(i))); side(); const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"center"}); } break; }
+    case "verify": if (gate()) doVerify(d.id); break; case "verifyall": if (gate()) doVerifyAll(); break;
+    case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;
+    case "leaf": if (gate()) doLeaf(d.o); break; case "assign": if (gate()) doAssign(); break;
+    case "init": if (gate()) doInit(); break; case "resolve": if (gate()) doResolve(d.id); break;
+  }
+});
+document.addEventListener("change", e => {
+  const t = e.target, d = t.dataset || {};
+  if (d.pick) { t.checked ? PICK.add(d.pick) : PICK.delete(d.pick); const c = cur(); if (c) side(); }
+  else if (d.wk) { t.checked ? WPICK.add(d.wk) : WPICK.delete(d.wk); const c = cur(); if (c) side(); }
+  else if (t.id === "day") { T = t.value || T; render(); }
+  else if (t.id === "cf") { CF = t.value; render(true); }
+  else if (t.id === "sq") { SQ = Math.max(0.5, +t.value || 1.55); LS.set("pm_sq", SQ); render(true); }
+});
+document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.d; if (k) DRAFT[k] = e.target.value; });
+["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { LAST = Date.now(); }, {passive:true}));
+$("lp").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("login").classList.add("hidden"); });
+
+/* ---------- boot ---------- */
+document.documentElement.dataset.theme = LS.get("pm_theme") === "night" ? "night" : "sun";
+setInterval(tick, 15000);
+setInterval(() => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED)) load(true); }, POLL_MS);
+setInterval(() => { if (M && Date.now() - LAST > IDLE_MS) exitManager("Manager mode turned off after 15 minutes without use."); }, 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED) && Date.now() - Date.parse(SNAP || 0) > 30000) load(true); });
+window.addEventListener("online", () => { if (!FORCED) load(true); });
+if (loadSnap()) { MODE = "offline"; render(); }   // paint the last snapshot at once; the live sync below replaces it
+load(true);
+</script></body></html>

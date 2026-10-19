@@ -332,16 +332,18 @@ function dispatch(r, w, rs) {
   const row = a => {
     const gate = a.scope !== "crop-wave", fb = a.feed && !r.direct && !leafOk(w), tr = a.history || [];
     return `<div class="act"><label><input type="checkbox" data-pick="${esc(a.id)}" ${PICK.has(a.id) ? "checked" : ""} aria-label="Select ${esc(a.name)}"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge st-attention">gate</span>' : ""}</span><span class="k">${esc(statusOf(a))}${a.assignee ? " · " + esc(String(a.assignee).replace(/;\s*/g, ", ")) : ""}</span></label>
+      ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}
       ${a.locked ? `<div class="d"><span class="badge wait">! Locked until the stage gates are cleared</span></div>` : ""}${fb ? `<div class="d"><span class="badge bad">✕ Blocked: first-leaf check for wave ${w.wave} is not Pass</span></div>` : ""}
       ${a.sessions && a.sessions.length ? `<div class="d">Working now: ${a.sessions.map(s => esc(s.by) + " (wave " + s.wave + ")").join(", ")}</div>` : ""}
       <div class="d">${a.assignee ? `<button type="button" class="alt sm" data-a="reassign" data-id="${esc(a.id)}">Reassign</button>` : ""}</div>
-      ${tr.length ? `<details><summary>Trail (${tr.length})</summary>${tr.slice().reverse().map(h => `<div class="k">${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}</div>`).join("")}</details>` : ""}
+      ${tr.length ? `<details><summary>Trail (${tr.length})</summary>${tr.slice().reverse().map(h => `<div class="k">${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}</div>`).join("")}</details>` : ""}
       ${a.scope === "crop-wave" ? `<details><summary>Manager actions</summary>${ctls(a, r, w, false) || `<p class="k">Nothing to do.</p>`}</details>` : ""}</div>`; };
   const a = PICK.size, n = WPICK.size;
-  return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; the change is kept in its trail.</p>
+  return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; a short note is required and the change is kept in its trail (from, to, by, note).</p>
     <div class="row"><button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button><button class="alt sm" type="button" data-a="pickall" data-m="all">Tick all</button><button class="alt sm" type="button" data-a="pickall" data-m="none">Clear</button></div>
     ${ph.map(([p, l], i) => `<details ${l.some(x => !x.assignee && !x.completed) ? "open" : ""}><summary>${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned</summary>${l.map(row).join("")}</details>`).join("")}
     <h3 id="wlist">Workers</h3>${D.workers.length ? `<div class="team">${D.workers.map(x => { const e = crew.get(String(x.id)); return `<label><input type="checkbox" data-wk="${esc(x.id)}" ${WPICK.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${e && e.st !== "IDLE" ? " · " + WS[e.st].toLowerCase() + (e.tasks.length ? ", " + e.tasks.length + " open" : "") : ""}</span></span></label>`; }).join("")}</div>` : `<p class="k">No active workers in USERS.</p>`}
+    ${rs.activities.some(x => PICK.has(x.id) && x.assignee && [...WPICK].sort().join(";") !== (x.assigneeIds || []).map(String).sort().join(";")) ? `<div class="frm"><input type="text" maxlength="300" data-d="${dk("an", r.runId)}" value="${dv(dk("an", r.runId))}" placeholder="Reassignment note (required): why is this changing?" aria-label="Reassignment note"></div>` : ""}
     <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
 }
 function triage() {
@@ -404,7 +406,7 @@ function paneWatch() {
 }
 function paneLog() {
   return `<h2>Log</h2><h3>Manager actions</h3>${D.mgrLog.length ? `<div class="tw"><table><tr><th>When</th><th>Action</th><th>Where</th><th>Reason</th><th>By</th></tr>${D.mgrLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)}${x.wave ? " W" + esc(x.wave) : ""}${x.activity_id ? " · " + esc(x.activity_id) : ""}</td><td>${esc(x.reason)}</td><td>${esc(x.by)}</td></tr>`).join("")}</table></div>` : `<p class="k">No manager actions logged yet.</p>`}
-    <h3>Assignment trail</h3>${D.assignLog.length ? `<div class="tw"><table><tr><th>When</th><th>Change</th><th>Run · activity</th><th>From</th><th>To</th><th>By</th></tr>${D.assignLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)} · ${esc(x.activity_id)}</td><td>${esc(x.from_name)}</td><td>${esc(x.to_name)}</td><td>${esc(x.by)}</td></tr>`).join("")}</table></div>` : `<p class="k">No assignments yet.</p>`}`;
+    <h3>Assignment trail</h3>${D.assignLog.length ? `<div class="tw"><table><tr><th>When</th><th>Change</th><th>Run · activity</th><th>From</th><th>To</th><th>By</th><th>Note</th></tr>${D.assignLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)} · ${esc(x.activity_id)}</td><td>${esc(x.from_name)}</td><td>${esc(x.to_name)}</td><td>${esc(x.by)}</td><td>${esc(x.note)}</td></tr>`).join("")}</table></div>` : `<p class="k">No assignments yet.</p>`}`;
 }
 function side() {
   if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
@@ -463,10 +465,12 @@ async function doLeaf(o) {
 }
 async function doAssign() {
   const c = cur(); if (!c || !c.rs) return; const ids = [...PICK], wk = [...WPICK];
+  const nk = dk("an", c.r.runId), note = (DRAFT[nk] || "").trim(), chg = c.rs.activities.filter(x => PICK.has(x.id) && x.assignee && [...WPICK].sort().join(";") !== (x.assigneeIds || []).map(String).sort().join(";"));
+  if (chg.length && !note) return toast("Write a short note explaining the reassignment first. It is required and is kept in the trail.", true);
   const had = c.rs.activities.filter(a => PICK.has(a.id) && a.assignee), live = c.rs.activities.filter(a => PICK.has(a.id) && a.sessions && a.sessions.length);
   if (had.length && !confirm(`${had.length} of the ticked activities already ${had.length > 1 ? "have" : "has"} a team. Assigning replaces ${had.length > 1 ? "those teams" : "that team"}. The change is kept in the assignment trail.` + (live.length ? `\n\n${live.length} ${live.length > 1 ? "have" : "has"} a worker mid-session. They can still close it.` : ""))) return;
-  const rs = await write(`Assigning ${ids.length} activit${ids.length > 1 ? "ies" : "y"}… this can take up to a minute`, () => post({action:"assign", runId:c.r.runId, activityIds:ids, workerIds:wk, due:$("due") ? $("due").value : ""}));
-  if (rs) { PICK.clear(); } done(rs, "Assigned");
+  const rs = await write(`Assigning ${ids.length} activit${ids.length > 1 ? "ies" : "y"}… this can take up to a minute`, () => post({action:"assign", runId:c.r.runId, activityIds:ids, workerIds:wk, due:$("due") ? $("due").value : "", note:chg.length ? note : ""}));
+  if (rs) { PICK.clear(); delete DRAFT[nk]; } done(rs, "Assigned");
 }
 async function doInit() {
   const c = cur(); if (!c || !c.w) return;

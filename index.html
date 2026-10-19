@@ -310,17 +310,19 @@ function ctls(a, r, w, gateCard) {   // manager controls for one activity
   return c.join("");
 }
 const refOf = id => ((D && D.refs) || {})[id] || {};
-const mvTxt = h => `${!h.from && h.to ? `Added <b>${esc(h.to)}</b> to the team (the existing worker stays on it)` : `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b>`} · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
+const mvTxt = h => `${!h.from && h.to ? `Added <b>${esc(h.to)}</b> to the team` : `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b>`} · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
 function moveLine(a) {   // newest reassignment of this activity, always visible
   const m = (a.history || []).filter(isMove); if (!m.length) return "";
-  return `<div class="d"><div class="mv"><b>↔ ${MOVEK[m[m.length - 1].kind]}${m.length > 1 ? " (latest of " + m.length + ")" : ""}:</b> ${mvTxt(m[m.length - 1])}</div></div>`;
+  const l = m[m.length - 1], keep = (a.assignees || []).filter(x => x.name === l.to), drop = (a.assignees || []).filter(x => x.name !== l.to);
+  const fix = l.kind === "ASSIGN" && keep.length && drop.length ? `<div class="frm"><span class="badge bad">! ${esc(drop.map(x => x.name).join(", "))} still on this task</span><button type="button" class="dng sm" data-a="fixmove" data-id="${esc(a.id)}">Remove ${esc(drop.map(x => x.name).join(", "))}, keep ${esc(keep.map(x => x.name).join(", "))}</button></div>` : "";
+  return `<div class="d"><div class="mv"><b>↔ ${MOVEK[l.kind]}${m.length > 1 ? " (latest of " + m.length + ")" : ""}:</b> ${mvTxt(l)}</div>${fix}</div>`;
 }
 function reassignBox(a, r) {   // from / to / by / note, for one activity (dispatch list and stage gates)
   const run = r.runId, id = a.id, key = run + "|" + id, now0 = (a.assigneeIds || []).map(String), set = RW[key] || new Set(), nk = dk("rn", run, id);
   const to = D.workers.filter(x => set.has(String(x.id))).map(x => x.name), from = a.assignee ? String(a.assignee).replace(/;\s*/g, ", ") : "";
   return `<details class="rg" ${RW[key] || DRAFT[nk] ? "open" : ""}><summary>${a.assignee ? "Reassign" : "Assign"}</summary>
-    <p class="k">${a.assignee ? "From: <b>" + esc(from) + "</b>. Tick who it goes <b>to</b>, add a short note and press Reassign. The new workers replace the current team, and the change is kept in the trail." : "Tick who should do this activity."}</p>
-    <div class="team">${D.workers.map(x => `<label><input type="checkbox" data-rw="${esc(key)}|${esc(x.id)}" ${set.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${now0.includes(String(x.id)) ? " · current" : ""}</span></span></label>`).join("")}</div>
+    <p class="k">${a.assignee ? "From: <b>" + esc(from) + "</b>. Tick who it goes <b>to</b>, add a short note and press Reassign. The current owner is removed and is no longer accountable. The change is kept in the trail." : "Tick who should do this activity."}</p>
+    <div class="team">${D.workers.map(x => `<label><input type="checkbox" data-rw="${esc(key)}|${esc(x.id)}" ${set.has(String(x.id)) ? "checked" : ""} ${a.assignee && now0.includes(String(x.id)) ? "disabled" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${a.assignee && now0.includes(String(x.id)) ? " · current owner, replaced" : ""}</span></span></label>`).join("")}</div>
     <div class="arrow">From ${esc(from || "Unassigned")} to ${esc(to.join(", ") || "(tick a worker)")}${M ? " · by " + esc(M.name) : ""}</div>
     <div class="frm"><input type="text" maxlength="300" data-d="${nk}" value="${dv(nk)}" placeholder="${a.assignee ? "Reassignment note (required)" : "Note (optional)"}" aria-label="Reassignment note for ${esc(id)}"><button type="button" class="sm" data-a="rgo" data-id="${esc(id)}">${a.assignee ? "Reassign" : "Assign"}</button></div></details>`;
 }
@@ -532,6 +534,16 @@ async function doReassign(id) {
   const rs = await write("Reassigning " + id, () => post({action:"assign", runId:run, activityIds:[id], workerIds:ids, note}));
   if (rs) { delete RW[key]; delete DRAFT[nk]; } done(rs, a.assignee ? "Reassigned " + id : "Assigned " + id);
 }
+async function doFixMove(id) {
+  const c = cur(); if (!c || !c.rs) return; const a = c.rs.activities.find(x => x.id === id); if (!a) return;
+  const m = (a.history || []).filter(isMove), l = m[m.length - 1]; if (!l) return;
+  const keep = (a.assignees || []).filter(x => x.name === l.to), drop = (a.assignees || []).filter(x => x.name !== l.to);
+  if (!keep.length || !drop.length) return toast("Nothing to remove.", true);
+  const note = ("Previous owner removed: " + drop.map(x => x.name).join(", ") + (l.note ? ". " + l.note : "")).slice(0, 300);
+  if (!confirm(`Make ${id} a full reassignment?\n\nFrom: ${drop.map(x => x.name).join(", ")}\nTo: ${keep.map(x => x.name).join(", ")}\nBy: ${M.name}\nNote: ${note}\n\n${drop.map(x => x.name).join(", ")} will no longer be accountable for it.`)) return;
+  const rs = await write("Removing previous owner", () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:keep.map(x => x.id).filter(Boolean), note}));
+  done(rs, "Previous owner removed from " + id);
+}
 async function doInit() {
   const c = cur(); if (!c || !c.w) return;
   const r = await write("Initiating wave… this can take 10 to 20 seconds", () => post({action:"initWaves", runId:c.r.runId, waves:[c.w.wave]}));
@@ -557,7 +569,7 @@ document.addEventListener("click", e => {
     case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
     case "crewv": CREW = d.v; side(); break;
     case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (d.m === "all" || (d.m === "un" && !a.assignee)) PICK.add(a.id); }); side(); } break; }
-    case "rgo": if (gate()) doReassign(d.id); break;
+    case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
     case "verify": if (gate()) doVerify(d.id); break; case "verifyall": if (gate()) doVerifyAll(); break;
     case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;

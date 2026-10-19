@@ -129,6 +129,8 @@ let RV = "reassigned", RU = "done";
 const nowMs = () => MODE === "live" ? Date.now() + OFFSET : (D ? D.now : Date.now());
 const canAct = () => !!M && MODE === "live";
 const ST = {occupied:{l:"In propagation", g:"●"}, ready:{l:"Transplant soon", g:"→"}, attention:{l:"Needs attention", g:"!"}, post:{l:"Post-transplant", g:"S"}, empty:{l:"Available", g:"○"}};
+const isMove = x => x.kind === "REASSIGN" || x.kind === "UNASSIGN" || (x.kind === "ASSIGN" && !!String(x.note || "").trim());
+const MOVEK = {REASSIGN:"Reassigned", UNASSIGN:"Removed", ASSIGN:"Added to team"};
 const WS = {IN_PROGRESS:"In progress", PAUSED:"Paused", ASSIGNED:"Assigned", IDLE:"Idle"};
 const KIND = {DIRECT_CLOSE:"Direct close", GATE_OVERRIDE:"Gate override", LEAF_OVERRIDE:"First-leaf override", ALERT_RESOLVED:"Alert resolved", ASSIGN:"Assigned", REASSIGN:"Reassigned", UNASSIGN:"Removed"};
 
@@ -250,7 +252,7 @@ function header() {
 function kpis() {
   if (!D) { $("kpi").innerHTML = ""; return; }
   const cap = Math.floor(BAY_SQFT / SQ), inR = RI.filter(i => i.k !== "post").reduce((n, i) => n + i.w.trays, 0), att = RI.filter(i => i.k === "attention").length;
-  const aw = runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0), st = openAlerts().length, on = D.sessions.filter(s => !s.pausedAt).length, pa = D.sessions.length - on, rc = (D.assignLog || []).filter(x => (x.kind === "REASSIGN" || x.kind === "UNASSIGN") && Date.parse(x.ts) > nowMs() - 7 * 864e5).length;
+  const aw = runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0), st = openAlerts().length, on = D.sessions.filter(s => !s.pausedAt).length, pa = D.sessions.length - on, rc = (D.assignLog || []).filter(x => isMove(x) && Date.parse(x.ts) > nowMs() - 7 * 864e5).length;
   const k = (a, big, lab, hot, tab) => `<button type="button" class="kp ${hot ? "hot" : ""}" ${a}><b>${big}</b>${lab}</button>`;
   $("kpi").innerHTML = k('data-a="filt" data-f="all"', `${inR}<span class="k"> / ${cap}</span>`, "Trays in room (" + fmt(T) + ")", inR > cap)
     + k('data-a="filt" data-f="attention"', att, "Waves needing attention", att > 0) + k('data-a="tab" data-tab="review" data-rv="unverified" data-ru="done"', aw, "Done, awaiting verification", aw > 0) + k('data-a="tab" data-tab="review" data-rv="reassigned"', rc, "Reassigned (7 days)", false)
@@ -299,18 +301,18 @@ function ctls(a, r, w, gateCard) {   // manager controls for one activity
   return c.join("");
 }
 const refOf = id => ((D && D.refs) || {})[id] || {};
-const mvTxt = h => `<b>${esc(h.from || "—")}</b> → <b>${esc(h.to || "—")}</b> · by ${esc(h.by)} · ${when(h.at)}${h.note ? ` · Note: “${esc(h.note)}”` : ""}`;
+const mvTxt = h => `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b> · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
 function moveLine(a) {   // newest reassignment of this activity, always visible
-  const m = (a.history || []).filter(h => h.kind === "REASSIGN" || h.kind === "UNASSIGN"); if (!m.length) return "";
-  return `<div class="d"><div class="mv"><b>↔ ${m.length > 1 ? "Last reassigned" : "Reassigned"}:</b> ${mvTxt(m[m.length - 1])}</div></div>`;
+  const m = (a.history || []).filter(isMove); if (!m.length) return "";
+  return `<div class="d"><div class="mv"><b>↔ ${MOVEK[m[m.length - 1].kind]}${m.length > 1 ? " (latest of " + m.length + ")" : ""}:</b> ${mvTxt(m[m.length - 1])}</div></div>`;
 }
 function reassignBox(a, r) {   // from / to / by / note, for one activity (dispatch list and stage gates)
-  const run = r.runId, id = a.id, key = run + "|" + id, now0 = (a.assigneeIds || []).map(String), set = RW[key] || new Set(now0), nk = dk("rn", run, id);
+  const run = r.runId, id = a.id, key = run + "|" + id, now0 = (a.assigneeIds || []).map(String), set = RW[key] || new Set(), nk = dk("rn", run, id);
   const to = D.workers.filter(x => set.has(String(x.id))).map(x => x.name), from = a.assignee ? String(a.assignee).replace(/;\s*/g, ", ") : "";
   return `<details class="rg" ${RW[key] || DRAFT[nk] ? "open" : ""}><summary>${a.assignee ? "Reassign" : "Assign"}</summary>
-    <p class="k">${a.assignee ? "Pick the new team, add a short note and press Reassign. The change is kept in the trail." : "Pick who should do this activity."}</p>
-    <div class="team">${D.workers.map(x => `<label><input type="checkbox" data-rw="${esc(key)}|${esc(x.id)}" ${set.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}</span></span></label>`).join("")}</div>
-    <div class="arrow">${esc(from || "Unassigned")} → ${esc(to.join(", ") || "choose a worker")}${M ? " · by " + esc(M.name) : ""}</div>
+    <p class="k">${a.assignee ? "From: <b>" + esc(from) + "</b>. Tick who it goes <b>to</b>, add a short note and press Reassign. The new workers replace the current team, and the change is kept in the trail." : "Tick who should do this activity."}</p>
+    <div class="team">${D.workers.map(x => `<label><input type="checkbox" data-rw="${esc(key)}|${esc(x.id)}" ${set.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${now0.includes(String(x.id)) ? " · current" : ""}</span></span></label>`).join("")}</div>
+    <div class="arrow">From ${esc(from || "Unassigned")} to ${esc(to.join(", ") || "(tick a worker)")}${M ? " · by " + esc(M.name) : ""}</div>
     <div class="frm"><input type="text" maxlength="300" data-d="${nk}" value="${dv(nk)}" placeholder="${a.assignee ? "Reassignment note (required)" : "Note (optional)"}" aria-label="Reassignment note for ${esc(id)}"><button type="button" class="sm" data-a="rgo" data-id="${esc(id)}">${a.assignee ? "Reassign" : "Assign"}</button></div></details>`;
 }
 function gateRow(a, r, w) {
@@ -426,12 +428,12 @@ function paneWatch() {
 /* ---------- review pane: reassigned + unverified ---------- */
 function openBtn(runId) { const r = D.runs.find(x => x.runId === runId); return r && r.waves && r.waves.length ? `<button type="button" class="alt sm" data-sel="${esc(runId)}|${r.waves[0].wave}">Open</button>` : ""; }
 function paneReview() {
-  const ra = (D.assignLog || []).filter(x => x.kind === "REASSIGN" || x.kind === "UNASSIGN"), un = D.unverified || [], dn = un.filter(x => x.done), op = un.filter(x => !x.done);
+  const ra = (D.assignLog || []).filter(isMove), un = D.unverified || [], dn = un.filter(x => x.done), op = un.filter(x => !x.done);
   const chip = (a, v, cur, l, n) => `<button type="button" class="${cur === v ? "on" : "alt"}" data-a="${a}" data-v="${v}">${l} · ${n}</button>`;
   const rrow = x => { const r = D.runs.find(y => y.runId === x.run_id), f = refOf(x.activity_id);
     return `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activity_id)}</b> ${esc(f.name || "")}<br><span class="k">${esc(r ? r.cropName : "")} · ${esc(x.run_id)}</span></span>${openBtn(x.run_id)}</div>
       ${f.description ? `<div class="d k">${esc(f.description)}</div>` : ""}
-      <div class="mv"><b>↔ ${esc(KIND[x.kind] || x.kind)}:</b> ${mvTxt({from:x.from_name, to:x.to_name, by:x.by, at:x.ts, note:x.note})}</div></div>`; };
+      <div class="mv"><b>↔ ${esc(MOVEK[x.kind] || x.kind)}:</b> ${mvTxt({from:x.from_name, to:x.to_name, by:x.by, at:x.ts, note:x.note})}</div></div>`; };
   const urow = x => `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activityId)}</b> ${esc(x.activity)}${x.scope !== "crop-wave" ? ' <span class="badge st-attention">gate</span>' : ""}<br><span class="k">${esc(x.crop)} · ${esc(x.runId)}</span></span>${openBtn(x.runId)}</div>
       ${x.description ? `<div class="d k">${esc(x.description)}</div>` : ""}
       <div class="d"><span class="badge ${x.done ? "wait" : "open"}">${x.done ? "! Done, awaiting verification" : "○ Assigned, not done"}</span>${x.team.length ? " · Team: " + esc(x.team.join(", ")) : ""}${x.due ? " · Due " + fmt(x.due) : ""}</div>
@@ -440,7 +442,7 @@ function paneReview() {
     ? (ra.length ? ra.slice(0, 80).map(rrow).join("") + (ra.length > 80 ? `<p class="k">Showing the latest 80. The full trail is in the Log tab.</p>` : "") : `<p class="k">No activity has been reassigned yet.</p>`)
     : `<div class="chips">${chip("ru", "done", RU, "Done, awaiting verification", dn.length)}${chip("ru", "open", RU, "Assigned, not done", op.length)}</div>${(RU === "done" ? dn : op).length ? (RU === "done" ? dn : op).map(urow).join("") : `<p class="k">${RU === "done" ? "Nothing is waiting for verification." : "Nothing assigned and open."}</p>`}`;
   return `<h2>Review</h2><div class="chips">${chip("rv", "reassigned", RV, "Reassigned", ra.length)}${chip("rv", "unverified", RV, "Unverified", un.length)}</div>
-    <p class="k">${RV === "reassigned" ? "Every reassignment, newest first: from who, to who, by who, with the note." : "Activities not yet verified or overridden by a manager. Gate activities are marked."}</p>${body}`;
+    <p class="k">${RV === "reassigned" ? "Every reassignment, newest first: from who, to who, by who, with the note from the manager who made it." : "Activities not yet verified or overridden by a manager. Gate activities are marked."}</p>${body}`;
 }
 function paneLog() {
   return `<h2>Log</h2><h3>Manager actions</h3>${D.mgrLog.length ? `<div class="tw"><table><tr><th>When</th><th>Action</th><th>Where</th><th>Reason</th><th>By</th></tr>${D.mgrLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)}${x.wave ? " W" + esc(x.wave) : ""}${x.activity_id ? " · " + esc(x.activity_id) : ""}</td><td>${esc(x.reason)}</td><td>${esc(x.by)}</td></tr>`).join("")}</table></div>` : `<p class="k">No manager actions logged yet.</p>`}
@@ -512,8 +514,8 @@ async function doAssign() {
 }
 async function doReassign(id) {
   const c = cur(); if (!c || !c.rs) return; const run = c.r.runId, a = c.rs.activities.find(x => x.id === id); if (!a) return;
-  const key = run + "|" + id, nk = dk("rn", run, id), ids = [...(RW[key] || new Set((a.assigneeIds || []).map(String)))], note = (DRAFT[nk] || "").trim();
-  if (!ids.length) return toast("Choose at least one worker.", true);
+  const key = run + "|" + id, nk = dk("rn", run, id), ids = [...(RW[key] || new Set())], note = (DRAFT[nk] || "").trim();
+  if (!ids.length) return toast("Tick who it goes to.", true);
   if (a.assignee && ids.slice().sort().join(";") === (a.assigneeIds || []).map(String).sort().join(";")) return toast("That is the same team. Tick a different worker first.", true);
   if (a.assignee && !note) return toast("Write a short note explaining the reassignment first. It is required and is kept in the trail.", true);
   const to = D.workers.filter(x => ids.includes(String(x.id))).map(x => x.name).join(", "), from = String(a.assignee || "Unassigned").replace(/;\s*/g, ", ");
@@ -557,7 +559,7 @@ document.addEventListener("change", e => {
   const t = e.target, d = t.dataset || {};
   if (d.pick) { t.checked ? PICK.add(d.pick) : PICK.delete(d.pick); const c = cur(); if (c) side(); }
   else if (d.rw) { const [run, id, wid] = d.rw.split("|"), key = run + "|" + id, rs = RS[run], a = rs && rs.activities.find(x => x.id === id);
-    const s = RW[key] || (RW[key] = new Set(((a && a.assigneeIds) || []).map(String))); t.checked ? s.add(wid) : s.delete(wid); side(); }
+    const s = RW[key] || (RW[key] = new Set()); t.checked ? s.add(wid) : s.delete(wid); side(); }
   else if (d.wk) { t.checked ? WPICK.add(d.wk) : WPICK.delete(d.wk); const c = cur(); if (c) side(); }
   else if (t.id === "day") { T = t.value || T; render(); }
   else if (t.id === "cf") { CF = t.value; render(true); }

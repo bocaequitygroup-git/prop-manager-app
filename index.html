@@ -88,9 +88,9 @@ body.busy{cursor:progress}
 <aside class="card" id="side"><div id="tabs" role="tablist"></div><div id="pane"></div></aside>
 </div>
 <div id="login" class="hidden" role="dialog" aria-modal="true" aria-label="Manager mode"><div class="card">
-<h2>Manager mode</h2><p class="k">Enter your manager PIN to dispatch, verify, close and override. Manager mode turns itself off after 15 minutes without use.</p>
-<label>Manager <span id="luw"></span></label>
-<label>PIN <input id="lp" type="password" inputmode="numeric" autocomplete="current-password"></label>
+<h2>Manager mode</h2><p class="k">Type your user name and PIN to dispatch, verify, close and override. Manager mode turns itself off after 15 minutes without use.</p>
+<label>User name <span id="luw"></span></label>
+<label>PIN <input id="lp" type="password" inputmode="numeric" autocomplete="new-password" placeholder="PIN"></label>
 <div id="lerr" class="note bad hidden" role="alert" style="margin:0"></div>
 <div class="row" style="margin:0"><button id="lgo" type="button" data-a="login">Turn on</button><button class="alt" type="button" data-a="loginx">Cancel</button></div></div></div>
 <div id="toast" class="hidden" role="status" aria-live="polite"></div>
@@ -134,7 +134,7 @@ const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify
 let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = SS.get("pm_session"), T = localToday(), SEL = null, RS = {};
 let TAB = "wave", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
 const PICK = new Set(), WPICK = new Set(), DRAFT = {}, LOADING = {}, RW = {};
-let RV = "reassigned", RU = "done";
+let RV = "reassigned", RU = "done", AUTOLOGIN = true;
 const nowMs = () => MODE === "live" ? Date.now() + OFFSET : (D ? D.now : Date.now());
 const canAct = () => !!M && MODE === "live";
 const ST = {occupied:{l:"In propagation", g:"●"}, ready:{l:"Transplant soon", g:"→"}, attention:{l:"Needs attention", g:"!"}, post:{l:"Post-transplant", g:"S"}, empty:{l:"Available", g:"○"}};
@@ -179,6 +179,7 @@ async function load(quiet) {
   try {
     const d = await get({action:"monitor"});
     D = d; OFFSET = d.now - Date.now(); MODE = "live"; SNAP = new Date().toISOString(); ERR = ""; saveSnap();
+    if (!M && AUTOLOGIN) { AUTOLOGIN = false; setTimeout(openLogin, 0); }
   } catch (e) {
     ERR = /Unknown action/.test(e.message) ? "The server has no manager console yet. Deploy the latest Code_prop.gs as a new version, then press Sync now." : e.message;
     if (!D) loadSnap();
@@ -200,12 +201,11 @@ function connBar() {
 /* ---------- manager mode (PIN) ---------- */
 function openLogin() {
   if (MODE !== "live") return toast("Go live first: Manager mode needs the server.", true);
-  const mg = D ? D.workers.filter(w => /^(manager|founder)$/i.test(w.role)) : [];
-  $("luw").innerHTML = mg.length ? `<select id="lu">${mg.map(w => `<option value="${esc(w.id)}">${esc(w.name)} (${esc(w.role)})</option>`).join("")}</select>` : `<input id="lu" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="User name">`;
-  $("lp").value = ""; $("lerr").classList.add("hidden"); $("login").classList.remove("hidden"); setTimeout(() => $("lp").focus(), 0);
+  $("luw").innerHTML = `<input id="lu" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Type your user name" aria-label="User name">`;
+  $("lp").value = ""; $("lerr").classList.add("hidden"); $("login").classList.remove("hidden"); setTimeout(() => $("lu").focus(), 0);
 }
 async function doLogin() {
-  const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) { $("lerr").textContent = "Choose the manager and enter the PIN."; return $("lerr").classList.remove("hidden"); }
+  const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) { $("lerr").textContent = "Type your user name and PIN."; return $("lerr").classList.remove("hidden"); }
   $("lgo").disabled = true;
   try { const r = await post({action:"boardLogin", user:u, pin:p, device:navigator.userAgent}); $("lp").value = "";
     M = {token:r.token, name:r.user.name, role:r.user.role, id:r.user.workerId}; SS.set("pm_session", M); SS.set("pm_last", Date.now()); $("login").classList.add("hidden"); LAST = Date.now(); render(); toast("Manager mode on: " + M.name); load(true); }
@@ -590,6 +590,7 @@ document.addEventListener("change", e => {
 document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.d; if (k) DRAFT[k] = e.target.value; });
 ["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { LAST = Date.now(); }, {passive:true}));
 $("lp").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target && e.target.id === "lu") { e.preventDefault(); $("lp").focus(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("login").classList.add("hidden"); });
 
 /* ---------- boot ---------- */

@@ -74,6 +74,8 @@ body.busy{cursor:progress}
 <div id="top">
 <header>
 <h1>Propagation Manager</h1><span class="k">Ngapori Ranch · Bay 3</span><span class="sp"></span>
+<button class="alt sm" type="button" data-a="sync" id="bRef">Refresh</button>
+<button class="alt sm hidden" id="bSwitch" type="button" data-a="switch">Switch user</button>
 <button class="alt" id="bMgr" type="button" data-a="mgr">Manager mode: off</button>
 <button class="alt sm" id="bTheme" type="button" data-a="theme">Night</button>
 </header>
@@ -110,10 +112,17 @@ const pf = p => p === "F" ? "Field" : p === "G" ? "Greenhouse" : p;
 const LS = {get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } },
   set(k, v) { try { v === null || v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }};
 
+const SS = {get(k) { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch (e) { return null; } },
+  set(k, v) { try { v === null || v === undefined ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }};
+// The manager login now lives in this tab only (sessionStorage): a new tab starts signed out, and closing the tab ends the session.
+// The old shared copy in localStorage is removed so nobody is silently signed in as the previous user.
+LS.set("pm_session", null);
+
 /* ---------- network ---------- */
 const hdr = {"Content-Type":"text/plain;charset=utf-8"};
 async function call(url, opt) {
-  let t; try { t = await (await fetch(url, opt)).text(); } catch (e) { throw new Error("No connection to the server."); }
+  let t, ac = typeof AbortController === "function" ? new AbortController() : null, to = ac ? setTimeout(() => ac.abort(), 90000) : 0;
+  try { t = await (await fetch(url, ac ? {...opt, signal: ac.signal} : opt)).text(); } catch (e) { throw new Error(e && e.name === "AbortError" ? "The server took too long to answer. Press Refresh to try again." : "No connection to the server."); } finally { clearTimeout(to); }
   let j; try { j = JSON.parse(t); } catch (e) { throw new Error("The server sent back a web page instead of data. Deploy the latest Code_prop.gs as a new version, then try again."); }
   if (j.error) { if (/^AUTH:/.test(j.error) && M) exitManager("Manager session ended. Turn Manager mode on again."); throw new Error(j.error.replace(/^AUTH:\s*/, "")); }
   return j;
@@ -122,7 +131,7 @@ async function get(p) { const go = () => call(API_URL + "?" + new URLSearchParam
 const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({...b, token: M ? M.token : undefined})});
 
 /* ---------- state ---------- */
-let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = LS.get("pm_session"), T = localToday(), SEL = null, RS = {};
+let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = SS.get("pm_session"), T = localToday(), SEL = null, RS = {};
 let TAB = "wave", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
 const PICK = new Set(), WPICK = new Set(), DRAFT = {}, LOADING = {}, RW = {};
 let RV = "reassigned", RU = "done";
@@ -199,11 +208,11 @@ async function doLogin() {
   const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) { $("lerr").textContent = "Choose the manager and enter the PIN."; return $("lerr").classList.remove("hidden"); }
   $("lgo").disabled = true;
   try { const r = await post({action:"boardLogin", user:u, pin:p, device:navigator.userAgent}); $("lp").value = "";
-    M = {token:r.token, name:r.user.name, role:r.user.role, id:r.user.workerId}; LS.set("pm_session", M); $("login").classList.add("hidden"); LAST = Date.now(); render(); toast("Manager mode on: " + M.name); }
+    M = {token:r.token, name:r.user.name, role:r.user.role, id:r.user.workerId}; SS.set("pm_session", M); SS.set("pm_last", Date.now()); $("login").classList.add("hidden"); LAST = Date.now(); render(); toast("Manager mode on: " + M.name); load(true); }
   catch (e) { $("lp").value = ""; $("lerr").textContent = e.message; $("lerr").classList.remove("hidden"); }
   finally { $("lgo").disabled = false; }
 }
-function exitManager(msg) { const t = M && M.token; M = null; LS.set("pm_session", null); if (t) { try { fetch(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({action:"logout", token:t})}).catch(() => {}); } catch (e) {} } render(true); if (msg) toast(msg); }
+function exitManager(msg) { const t = M && M.token; M = null; SS.set("pm_session", null); SS.set("pm_last", null); if (t) { try { fetch(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({action:"logout", token:t})}).catch(() => {}); } catch (e) {} } render(true); if (msg) toast(msg); }
 function gate() {
   if (MODE !== "live") { toast("Offline snapshot: changes are disabled. Go live first.", true); return false; }
   if (!M) { toast("Turn on Manager mode (PIN) to do that.", true); openLogin(); return false; }
@@ -245,7 +254,7 @@ function sessLine(s) {
 
 /* ---------- header, KPIs ---------- */
 function header() {
-  $("bMgr").textContent = M ? "Manager: " + M.name + " · Exit" : "Manager mode: off"; $("bMgr").className = M ? "" : "alt";
+  $("bMgr").textContent = M ? "Manager: " + M.name + " · Exit" : "Manager mode: off"; $("bMgr").className = M ? "" : "alt"; $("bSwitch").classList.toggle("hidden", !M);
   $("bTheme").textContent = document.documentElement.dataset.theme === "night" ? "Sun" : "Night";
   document.documentElement.style.setProperty("--hh", $("top").offsetHeight + "px");
 }
@@ -301,7 +310,7 @@ function ctls(a, r, w, gateCard) {   // manager controls for one activity
   return c.join("");
 }
 const refOf = id => ((D && D.refs) || {})[id] || {};
-const mvTxt = h => `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b> · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
+const mvTxt = h => `${!h.from && h.to ? `Added <b>${esc(h.to)}</b> to the team (the existing worker stays on it)` : `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b>`} · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
 function moveLine(a) {   // newest reassignment of this activity, always visible
   const m = (a.history || []).filter(isMove); if (!m.length) return "";
   return `<div class="d"><div class="mv"><b>↔ ${MOVEK[m[m.length - 1].kind]}${m.length > 1 ? " (latest of " + m.length + ")" : ""}:</b> ${mvTxt(m[m.length - 1])}</div></div>`;
@@ -538,7 +547,8 @@ document.addEventListener("click", e => {
   LAST = Date.now(); const b = e.target.closest("[data-a],[data-sel]"); if (!b) return; const d = b.dataset;
   if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); if (window.innerWidth <= 980) $("side").scrollIntoView({behavior:"smooth", block:"start"}); return; }
   switch (d.a) {
-    case "sync": load(); break; case "offline": goOffline(); break; case "live": goLive(); break;
+    case "sync": FORCED ? goLive() : load(); break;
+    case "switch": exitManager(); if (MODE === "live") openLogin(); else toast("Go live first, then sign in as the other manager.", true); break; case "offline": goOffline(); break; case "live": goLive(); break;
     case "mgr": M ? exitManager("Manager mode off") : openLogin(); break;
     case "login": doLogin(); break; case "loginx": $("login").classList.add("hidden"); break;
     case "theme": { const n = document.documentElement.dataset.theme === "night" ? "sun" : "night"; document.documentElement.dataset.theme = n; LS.set("pm_theme", n); header(); break; }
@@ -572,6 +582,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("login").c
 
 /* ---------- boot ---------- */
 document.documentElement.dataset.theme = LS.get("pm_theme") === "night" ? "night" : "sun";
+if (M) { const last = SS.get("pm_last"); if (last && Date.now() - last > IDLE_MS) { M = null; SS.set("pm_session", null); SS.set("pm_last", null); } }
+setInterval(() => { if (M) SS.set("pm_last", LAST); }, 10000);
 setInterval(tick, 15000);
 setInterval(() => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED)) load(true); }, POLL_MS);
 setInterval(() => { if (M && Date.now() - LAST > IDLE_MS) exitManager("Manager mode turned off after 15 minutes without use."); }, 30000);

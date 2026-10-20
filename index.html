@@ -55,11 +55,9 @@ header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 
 .leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:8px 0}.leg span{display:inline-flex;gap:6px;align-items:center}.leg i{width:18px;height:18px;border-radius:4px;border:2px solid var(--edge);display:inline-block}
 .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}.facts div{border:2px solid var(--line);border-radius:10px;padding:6px 10px}.facts b{display:block}
 .pbar{display:flex;height:16px;border:2px solid var(--edge);border-radius:8px;overflow:hidden;margin:8px 0;background:var(--card)}.pbar i{display:block;height:100%}.pbar .p-dn{background:var(--acc)}.pbar .p-ip{background:var(--blue)}.pbar .p-as{background:var(--blues)}.pbar .p-un{background:var(--warns)}.pleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}.pleg span b{font-size:16px}
-.pc .phead{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}.pc .pbig{font-size:18px}.pc .pbig b{font-size:30px;line-height:1}.pc .ppct{font-size:22px;font-weight:700;color:var(--acc)}
-.ptiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:8px 0}.ptile{border:2px solid var(--edge);border-radius:10px;padding:6px 10px;display:flex;flex-direction:column;background:var(--card)}.ptile .pn{font-size:26px;font-weight:700;line-height:1.1}.ptile .pn small{font-size:14px;font-weight:400;color:var(--mute)}.ptile .pl{font-size:13px;font-weight:700}
-.ptile.t-un{background:var(--warns);border-color:var(--warnb);color:var(--warn)}.ptile.t-un .pn small{color:var(--warn)}.ptile.t-as{background:var(--blues);border-color:var(--blue);color:var(--blue)}.ptile.t-ip{background:var(--blue);border-color:var(--blue);color:#fff}.ptile.t-ip .pn small{color:#fff}.ptile.t-dn{background:var(--accs);border-color:var(--acc);color:var(--acc)}.ptile.t-dn .pn small{color:var(--acc)}
-.pgrps{border-top:2px solid var(--line);margin-top:8px;padding-top:6px}.pgrp{display:grid;grid-template-columns:150px 1fr;gap:2px 10px;align-items:center;padding:4px 0}.pgn{font-weight:700;font-size:14px}.pgt{grid-column:1/-1;font-size:13px;color:var(--mute)}.pgrp .pbar.mini{height:10px;margin:0;border-width:1px;border-radius:5px}.pwarn{color:var(--warn);font-weight:700}
-@media(max-width:520px){.pgrp{grid-template-columns:1fr}}
+.light{display:flex;align-items:center;gap:12px;border:2px solid var(--edge);border-radius:12px;padding:8px 14px;margin:6px 0}.light i{width:26px;height:26px;border-radius:50%;border:2px solid var(--edge);flex:none}.light span{font-size:20px;font-weight:700;display:flex;flex-direction:column}.light small{font-size:13px;font-weight:400}
+.light.go{background:var(--accs);border-color:var(--acc);color:var(--acc)}.light.go i{background:#1fb455;border-color:var(--acc);box-shadow:0 0 0 4px #bfe9cb}.light.stop{background:var(--warns);border-color:var(--warnb);color:var(--warn)}.light.stop i{background:#e27100;border-color:var(--warn)}
+.al-list{list-style:none;margin:0;padding:0}.al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.al-row:last-child{border-bottom:0}.al-n{display:flex;flex-direction:column}.al-w{font-size:13px}.badge.prog{background:var(--blue);color:#fff;border-color:var(--blue)}
 .blk{border:2px solid var(--edge);border-radius:12px;padding:10px 12px;margin:12px 0}.blk h3{margin-top:0}
 .g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}.g .n{flex:1;min-width:190px}
 .act{border-bottom:2px dashed var(--line);padding:6px 0}.act label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;cursor:pointer}.act .n{flex:1;min-width:170px}
@@ -318,31 +316,31 @@ function progBadge(r) {
   const all = p.dn === p.total;
   return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
 }
+function actLabel(a) {   // [css, text] one plain status word per activity
+  const gate = a.scope !== "crop-wave";
+  if (a.overridden) return ["ok", "✓ Completed (overridden)"];
+  if (a.completed && (a.verified || !gate)) return ["ok", "✓ Completed"];
+  if (a.completed) return ["wait", "! Done, awaiting verification"];
+  if (a.sessions && a.sessions.length) return ["prog", "◐ In progress"];
+  if (a.assignee) return ["open", "◔ Assigned"];
+  return ["wait", "○ Not assigned"];
+}
 function progCard(r) {
-  const p = prog(r);
-  if (!p) return "";
-  if (!p.total) return `<section class="blk"><h3>Activity progress</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
-  const rs = RS[r.runId], pct = Math.round(p.dn / p.total * 100), all = p.dn === p.total;
-  const seg = (c, v, t) => v ? `<i class="${c}" style="width:${v / t * 100}%"></i>` : "";
-  const bar = (q, cls) => `<div class="pbar ${cls || ""}" role="img" aria-label="${q.dn} complete, ${q.ip} in progress, ${q.as} assigned, ${q.un} not assigned, of ${q.total}">${seg("p-dn", q.dn, q.total)}${seg("p-ip", q.ip, q.total)}${seg("p-as", q.as, q.total)}${seg("p-un", q.un, q.total)}</div>`;
-  const tile = (cls, ic, n, lbl) => `<div class="ptile ${cls}"><span class="pn">${n}<small> / ${p.total}</small></span><span class="pl">${ic} ${lbl}</span></div>`;
-  let groups = "";
-  if (rs && rs.activities) {
-    const defs = [["pre-sowing", "Pre-sowing gates"], ["post-transplant", "Post-transplant gates"], ["crop-wave", "Crop activities"]];
-    groups = defs.map(([sc, lbl]) => { const l = rs.activities.filter(a => a.scope === sc); if (!l.length) return ""; const q = tally(l);
-      const bits = [`<b>${q.dn}</b> of ${q.total} complete`]; if (q.ip) bits.push(`${q.ip} in progress`); if (q.as) bits.push(`${q.as} assigned`); if (q.un) bits.push(`<span class="pwarn">${q.un} not assigned</span>`); if (q.wait) bits.push(`<span class="pwarn">${q.wait} awaiting verification</span>`);
-      return `<div class="pgrp"><span class="pgn">${lbl}</span>${bar(q, "mini")}<span class="pgt">${bits.join(" · ")}</span></div>`; }).join("");
-  }
-  const alerts = [];
-  if (p.un) alerts.push(`<b>${p.un}</b> activit${p.un > 1 ? "ies still need" : "y still needs"} an owner. <button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button>`);
-  if (p.wait) alerts.push(`<b>${p.wait}</b> gate step${p.wait > 1 ? "s are" : " is"} done but not yet verified.`);
-  return `<section class="blk pc"><div class="row" style="margin:0"><h3 style="margin:0">Activity progress</h3><span class="k">run ${esc(r.runId)}</span><span class="sp"></span>${progBadge(r)}</div>
-    <div class="phead"><span class="pbig"><b>${p.dn}</b> of ${p.total} complete</span><span class="ppct">${pct}%</span></div>
-    ${bar(p)}
-    <div class="ptiles">${tile("t-un", "○", p.un, "Not assigned")}${tile("t-as", "◔", p.as, "Assigned, not started")}${tile("t-ip", "◐", p.ip, "In progress")}${tile("t-dn", "●", p.dn, "Complete")}</div>
-    ${groups ? `<div class="pgrps">${groups}</div>` : ""}
-    ${alerts.length ? alerts.map(x => `<div class="al" style="padding:6px 12px">${x}</div>`).join("") : `<p class="k" style="margin:6px 0 0">${all ? "All activities are complete." : "Every activity has an owner or is complete."}</p>`}
-    <p class="k" style="margin:6px 0 0;font-size:13px">Shared by all ${r.waves.length} wave${r.waves.length > 1 ? "s" : ""} of this run. Complete includes manager direct-close and gate overrides.</p></section>`;
+  const rs = RS[r.runId];
+  if (!rs || !rs.activities) return `<section class="blk"><h3>Activities</h3><p class="k">Loading activities…</p></section>`;
+  const all = rs.activities;
+  if (!all.length) return `<section class="blk"><h3>Activities</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
+  const gates = all.filter(a => a.scope !== "crop-wave"), pre = gates.filter(a => a.scope === "pre-sowing"), next = all.filter(a => a.scope === "crop-wave");
+  const doneN = l => l.filter(a => actLabel(a)[0] === "ok").length, progN = l => l.filter(a => actLabel(a)[0] === "prog").length;
+  const ready = pre.every(gateOk), left = pre.filter(a => !gateOk(a)).length;
+  const row = (a, tag) => { const [c, t] = actLabel(a);
+    return `<li class="al-row"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}</span><span class="badge ${c}">${t}</span></li>`; };
+  const head = (t, l) => `<h3 style="margin:12px 0 4px">${t} · ${doneN(l)} of ${l.length} completed${progN(l) ? ", " + progN(l) + " in progress" : ""}</h3>`;
+  return `<section class="blk pc"><h3 style="margin:0 0 6px">Activities · run ${esc(r.runId)}</h3>
+    ${pre.length ? `<div class="light ${ready ? "go" : "stop"}"><i></i><span>${ready ? "Ready to sow" : "Not ready to sow"}<small>${ready ? "All required activities before sowing are cleared." : left + " required activit" + (left > 1 ? "ies" : "y") + " still to clear before sowing."}</small></span></div>` : ""}
+    ${gates.length ? head("Required activities", gates) + `<ul class="al-list">${gates.map(a => row(a, a.scope === "post-transplant" ? "after transplant" : "before sowing")).join("")}</ul>` : ""}
+    ${next.length ? head("Next activities", next) + `<ul class="al-list">${next.map(a => row(a, a.locked ? "locked until required activities are cleared" : "")).join("")}</ul>` : ""}
+    <p class="k" style="margin:8px 0 0;font-size:13px">Shared by all ${r.waves.length} wave${r.waves.length > 1 ? "s" : ""} of this run.</p></section>`;
 }
 const dk = (...p) => p.join("|");
 const dv = k => esc(DRAFT[k] || "");

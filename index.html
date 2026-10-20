@@ -54,6 +54,7 @@ header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 
 .cell.sel{outline:4px solid var(--edge);outline-offset:1px;z-index:1}.cells .cell.e{background:transparent;border:2px dashed var(--line);cursor:default}
 .leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:8px 0}.leg span{display:inline-flex;gap:6px;align-items:center}.leg i{width:18px;height:18px;border-radius:4px;border:2px solid var(--edge);display:inline-block}
 .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}.facts div{border:2px solid var(--line);border-radius:10px;padding:6px 10px}.facts b{display:block}
+.pbar{display:flex;height:16px;border:2px solid var(--edge);border-radius:8px;overflow:hidden;margin:8px 0;background:var(--card)}.pbar i{display:block;height:100%}.pbar .p-dn{background:var(--acc)}.pbar .p-ip{background:var(--blue)}.pbar .p-as{background:var(--blues)}.pbar .p-un{background:var(--warns)}.pleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}.pleg span b{font-size:16px}
 .blk{border:2px solid var(--edge);border-radius:12px;padding:10px 12px;margin:12px 0}.blk h3{margin-top:0}
 .g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}.g .n{flex:1;min-width:190px}
 .act{border-bottom:2px dashed var(--line);padding:6px 0}.act label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;cursor:pointer}.act .n{flex:1;min-width:170px}
@@ -280,7 +281,7 @@ function matrix() {
   const tracks = [...new Set(vis.map(i => i.track))].sort();
   const sel = (i, n) => SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave;
   const grp = i => { const c = col(i.r.crop), s = sel(i);
-    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> W${i.w.wave} · ${i.w.trays} trays ${badge(i.k, i.l)}</button>
+    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> W${i.w.wave} · ${i.w.trays} trays ${badge(i.k, i.l)} ${progBadge(i.r)}</button>
     <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}">${esc(i.r.crop)}</button>`).join("")}</div></div>`; };
   el.innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Propagation room</h2><span class="sp"></span>
     <button class="alt sm" type="button" data-a="day" data-d="-1" aria-label="Previous day">‹</button><input type="date" id="day" value="${T}" aria-label="Date"><button class="alt sm" type="button" data-a="day" data-d="1" aria-label="Next day">›</button><button class="alt sm" type="button" data-a="day" data-d="0">Today</button></div>
@@ -298,6 +299,29 @@ function matrix() {
 
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
 const statusOf = a => a.overridden ? "Overridden" : a.verified ? "Verified" : a.completed ? "Done, awaiting verification" : a.sessions && a.sessions.length ? "In progress" : a.assignee ? "Assigned" : "Not assigned";
+/* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
+function prog(r) {   // {total, un, as, ip, dn}: fresh from the run detail when loaded, else from the monitor snapshot
+  const rs = RS[r.runId];
+  if (rs && rs.activities) { const p = {total:rs.activities.length, un:0, as:0, ip:0, dn:0};
+    rs.activities.forEach(a => { if (a.completed || a.overridden) p.dn++; else if (a.sessions && a.sessions.length) p.ip++; else if (a.assignee) p.as++; else p.un++; }); return p; }
+  const s = r.prog; return s ? {total:s.total, un:s.unassigned, as:s.assigned, ip:s.inProg, dn:s.done} : null;
+}
+function progBadge(r) {
+  const p = prog(r); if (!p) return "";
+  if (!p.total) return `<span class="badge open">○ No activities yet</span>`;
+  const n = p.total - p.un;
+  return `<span class="badge ${p.un ? "wait" : "ok"}" title="${p.un} unassigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${p.un ? "!" : "✓"} ${n} of ${p.total} assigned</span>`;
+}
+function progCard(r) {
+  const p = prog(r);
+  if (!p) return "";
+  if (!p.total) return `<section class="blk"><h3>Activity progress</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
+  const n = p.total - p.un, seg = (c, v) => v ? `<i class="${c}" style="width:${v / p.total * 100}%"></i>` : "";
+  return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">Activity progress · run ${esc(r.runId)}</h3><span class="sp"></span>${progBadge(r)}</div>
+    <div class="pbar" role="img" aria-label="${n} of ${p.total} activities assigned: ${p.un} unassigned, ${p.as} assigned, ${p.ip} in progress, ${p.dn} complete">${seg("p-dn", p.dn)}${seg("p-ip", p.ip)}${seg("p-as", p.as)}${seg("p-un", p.un)}</div>
+    <div class="pleg"><span><b>${p.un}</b> of ${p.total} unassigned</span><span><b>${p.as}</b> of ${p.total} assigned</span><span><b>${p.ip}</b> of ${p.total} in progress</span><span><b>${p.dn}</b> of ${p.total} complete</span></div>
+    <p class="k">${p.un ? "Still to assign: " + p.un + ". " : "Every required activity has an owner or is complete. "}Activities are shared by every wave of this run, so these counts are the same for each wave. Complete includes manager direct-close and gate overrides.</p></section>`;
+}
 const dk = (...p) => p.join("|");
 const dv = k => esc(DRAFT[k] || "");
 function ctls(a, r, w, gateCard) {   // manager controls for one activity
@@ -397,7 +421,7 @@ function paneWave() {
   ${canAct() ? "" : `<div class="note" style="margin:10px 0">View only. ${MODE === "live" ? "Turn on Manager mode to act." : "Go live and turn on Manager mode to act."}</div>`}
   ${w.init ? "" : `<div class="row"><button type="button" data-a="init">Initiate this wave</button><span class="k">Adds every activity for the run so work can be dispatched.</span></div>`}
   ${(w.phases || []).length ? `<details><summary>Propagation phases</summary><table><tr><th>Phase</th><th>Days</th><th>Starts</th><th>Ends</th></tr>${w.phases.map(p => `<tr ${p.start <= T && T < p.end ? 'style="font-weight:700"' : ""}><td>${esc(p.phase)}</td><td>${p.days}</td><td>${fmt(p.start)}</td><td>${fmt(p.end)}</td></tr>`).join("")}</table></details>` : ""}
-  ${gatesCard(r, w, rs)}${leafCard(r, w, rs)}${dispatch(r, w, rs)}`;
+  ${progCard(r)}${gatesCard(r, w, rs)}${leafCard(r, w, rs)}${dispatch(r, w, rs)}`;
 }
 
 /* ---------- crew pane ---------- */

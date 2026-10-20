@@ -140,7 +140,7 @@ const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify
 
 /* ---------- state ---------- */
 let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = SS.get("pm_session"), T = localToday(), SEL = null, RS = {};
-let ATTALL = false, TAB = "overview", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
+let TAB = "waves", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
 const PICK = new Set(), WPICK = new Set(), DRAFT = {}, LOADING = {}, RW = {};
 let RV = "reassigned", RU = "done", AUTOLOGIN = true;
 const nowMs = () => MODE === "live" ? Date.now() + OFFSET : (D ? D.now : Date.now());
@@ -301,7 +301,7 @@ function matrix() {
   <div class="chips" role="group" aria-label="Status filter">${flt.map(([v, l]) => `<button type="button" class="${FILT === v ? "on" : "alt"}" data-a="filt" data-f="${v}">${l} · ${cnt[v]}</button>`).join("")}</div>
   <div class="row"><label class="k">Crop <select id="cf"><option value="">All crops</option>${crops.map(([c, n]) => `<option value="${esc(c)}" ${c === CF ? "selected" : ""}>${esc(n)} (${esc(c)})</option>`).join("")}</select></label>
     <label class="k">Sq ft per tray <input type="number" id="sq" min="0.5" step="0.05" value="${SQ}" style="width:90px"></label></div>
-  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => String(a.r.cropName).localeCompare(String(b.r.cropName)) || a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave), n = l.reduce((s, i) => s + i.w.trays, 0);
+  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave), n = l.reduce((s, i) => s + i.w.trays, 0);
     return `<div class="trk"><h3 style="margin:0">Track ${esc(t)}</h3><span class="k">${n} trays shown</span></div>${l.map(grp).join("")}`; }).join("")}
   ${(FILT === "all" || FILT === "empty") && !CF ? `<div class="trk"><h3 style="margin:0">Available benches</h3><span class="k">${free} tray slots free in Bay 3</span></div><div class="cells">${Array.from({length:Math.min(free, 600)}, () => `<span class="cell e"></span>`).join("")}</div>` : ""}
   ${!vis.length && FILT !== "empty" ? `<p class="k">Nothing matches this filter on ${fmt(T)}.</p>` : ""}
@@ -458,20 +458,19 @@ function dispatch(r, w, rs) {
     ${rs.activities.some(x => PICK.has(x.id) && x.assignee && [...WPICK].sort().join(";") !== (x.assigneeIds || []).map(String).sort().join(";")) ? `<div class="frm"><input type="text" maxlength="300" data-d="${dk("an", r.runId)}" value="${dv(dk("an", r.runId))}" placeholder="Reassignment note (required): why is this changing?" aria-label="Reassignment note"></div>` : ""}
     <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
 }
-function triage() {
-  const all = RI.filter(i => i.k === "attention"), att = ATTALL ? all : all.slice(0, 8), aw = runs().filter(r => r.acts && r.acts.awaiting > 0);
-  const sr = SEL && runs().find(x => x.runId === SEL.runId);
-  return `<h2>Overview</h2>
-    ${sr ? `<div class="row" style="margin-top:0"><button type="button" data-a="tab" data-tab="wave">Back to ${esc(sr.cropName)} W${SEL.wave} ›</button></div>` : `<p class="k">Tap a wave block or tray in the matrix, or one of the waves below, to open it.</p>`}
-    ${all.length ? `<h3>Needs attention · ${all.length}</h3>${att.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b><br><span class="k">${esc(i.l)}</span></span><button class="alt sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("")}${all.length > 8 ? `<div class="row"><button class="alt sm" type="button" data-a="attall">${ATTALL ? "Show only the first 8" : "Show all " + all.length}</button></div>` : ""}` : `<p class="k">No wave in the room needs attention on ${fmt(T)}.</p>`}
-    ${aw.length ? `<h3>Awaiting verification</h3>${aw.map(r => `<div class="g"><span class="n"><b>${esc(r.cropName)} · ${esc(r.runId)}</b><br><span class="k">${r.acts.awaiting} done, not verified</span></span><button class="alt sm" type="button" data-sel="${esc(r.runId)}|${r.waves[0].wave}">Open</button></div>`).join("")}` : ""}`;
+const visItems = () => RI.filter(i => (FILT === "all" || (FILT === "occupied" ? i.k === "occupied" || i.k === "ready" : FILT === i.k)) && (!CF || i.r.crop === CF)).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave);
+function wavesList() {   // every wave in the room for the current filter; tap Open to work on one
+  const l = visItems(), names = {all:"All", empty:"Available", occupied:"Occupied", attention:"Needs attention", post:"Post-transplant"};
+  const chips = ["all", "attention", "occupied"].map(v => `<button type="button" class="${FILT === v ? "on" : "alt"} sm" data-a="filt" data-f="${v}">${names[v]}</button>`).join("");
+  return `<h2>Waves · ${l.length}</h2><div class="row" style="margin-top:0">${chips}</div>
+    ${l.length ? l.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b> <span class="k">· ${i.w.trays} trays</span><br><span class="k">${esc(i.l)}</span></span><button class="${SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave ? "" : "alt"} sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("") : `<p class="k">No waves match this filter on ${fmt(T)}.</p>`}`;
 }
 function paneWave() {
   const r = SEL && runs().find(x => x.runId === SEL.runId), w = r && r.waves.find(x => x.wave === SEL.wave);
-  if (!w) return `<p class="k">No wave is open.</p><div class="row"><button type="button" data-a="tab" data-tab="overview">‹ Back to overview</button></div>`;
+  if (!w) return `<p class="k">No wave is open. Pick one from the list.</p><div class="row"><button type="button" data-a="tab" data-tab="waves">Go to Waves</button></div>`;
   const [k, l] = wst(r, w, T), rs = RS[r.runId];
   if (!rs && !LOADING[r.runId]) setTimeout(() => !RS[r.runId] && !LOADING[r.runId] && loadRun(r.runId), 0);
-  return `<div class="row" style="margin-top:0"><button class="alt sm" type="button" data-a="tab" data-tab="overview">‹ Overview</button></div>
+  return `<div class="row" style="margin-top:0"><button class="alt sm" type="button" data-a="tab" data-tab="waves">‹ Waves</button></div>
   <div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · W${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
   <div class="facts"><div><span class="k">Sow date</span><b>${fmt(w.sow)}</b></div><div><span class="k">Transplant (DOB)</span><b>${fmt(w.plant)}</b><span class="k">${days(T, w.plant) >= 0 ? "in " + days(T, w.plant) + " d" : -days(T, w.plant) + " d ago"}</span></div>
   <div><span class="k">Trays</span><b>${w.trays || "None (direct)"}${r.trayCells ? " · " + r.trayCells + "-cell" : ""}</b></div><div><span class="k">Material</span><b>${w.material ? w.material.toLocaleString() : "Bulk"}</b></div>
@@ -544,10 +543,9 @@ function paneLog() {
 }
 function side() {
   if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
-  const sr = SEL && runs().find(x => x.runId === SEL.runId), wl = sr ? sr.cropName + " W" + SEL.wave : "Wave";
-  const tabs = [["overview", "Overview", RI.filter(i => i.k === "attention").length || ""], ["wave", wl, ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
+  const tabs = [["waves", "Waves", ""], ["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
   $("tabs").innerHTML = tabs.map(([v, l, n]) => `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-a="tab" data-tab="${v}">${l}${n ? " (" + n + ")" : ""}</button>`).join("");
-  $("pane").innerHTML = TAB === "overview" ? triage() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
+  $("pane").innerHTML = TAB === "waves" ? wavesList() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
 }
 
 /* ---------- render ---------- */
@@ -651,8 +649,7 @@ document.addEventListener("click", e => {
     case "theme": { const n = document.documentElement.dataset.theme === "night" ? "sun" : "night"; document.documentElement.dataset.theme = n; LS.set("pm_theme", n); header(); break; }
     case "tab": TAB = d.tab; if (d.rv) RV = d.rv; if (d.ru) RU = d.ru; side(); break;
     case "filt": FILT = d.f; render(true); break;
-    case "kpiatt": FILT = "attention"; TAB = "overview"; render(true); side(); break;
-    case "attall": ATTALL = !ATTALL; side(); break;
+    case "kpiatt": FILT = "attention"; TAB = "waves"; render(true); side(); break;
     case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
     case "crewv": CREW = d.v; side(); break;
     case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }

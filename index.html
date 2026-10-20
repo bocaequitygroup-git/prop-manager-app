@@ -185,6 +185,7 @@ async function load(quiet) {
   try {
     const d = await get({action:"monitor", token:M.token});
     D = d; OFFSET = d.now - Date.now(); MODE = "live"; SNAP = new Date().toISOString(); ERR = ""; saveSnap();
+    await freshRun();
   } catch (e) {
     ERR = /Unknown action/.test(e.message) ? "The server has no manager console yet. Deploy the latest Code_prop.gs as a new version, then press Sync now." : e.message;
     if (!D) loadSnap();
@@ -231,6 +232,11 @@ function applyRun(rs) {   // a write returns the run's fresh state: keep it, and
   RS[rs.runId] = rs; const r = D && D.runs.find(x => x.runId === rs.runId);
   if (r && r.waves && rs.leaf) r.waves.forEach(w => { w.leaf = rs.leaf[w.wave] || null; });
   if (r && r.gates) r.gates = rs.activities.filter(a => a.scope !== "crop-wave").map(a => ({id:a.id, name:a.name, scope:a.scope, completed:a.completed, verified:a.verified, overridden:a.overridden, assignee:a.assignee || "", completedBy:a.completedBy || "", overrideReason:a.overrideReason || ""}));
+}
+async function freshRun() {   // re-read the open run on every sync so worker completions show here; other runs reload when opened
+  const keep = SEL && SEL.runId; Object.keys(RS).forEach(id => { if (id !== keep) delete RS[id]; });
+  if (!keep || LOADING[keep]) return;
+  try { const rs = await get({action:"run", runId:keep}); if (rs && rs.activities) applyRun(rs); } catch (e) {}
 }
 async function loadRun(id) { LOADING[id] = 1; try { RS[id] = await get({action:"run", runId:id}); } catch (e) { RS[id] = {runId:id, activities:[], leaf:{}, error:e.message}; toast(e.message, true); } delete LOADING[id]; render(true); }
 
@@ -320,7 +326,7 @@ function actLabel(a) {   // [css, text] one plain status word per activity
   const gate = a.scope !== "crop-wave";
   if (a.overridden) return ["ok", "✓ Completed (overridden)"];
   if (a.completed && (a.verified || !gate)) return ["ok", "✓ Completed"];
-  if (a.completed) return ["wait", "! Done, awaiting verification"];
+  if (a.completed) return ["wait", "✓ Completed · needs verification"];
   if (a.sessions && a.sessions.length) return ["prog", "◐ In progress"];
   if (a.assignee) return ["open", "◔ Assigned"];
   return ["wait", "○ Not assigned"];
@@ -331,7 +337,7 @@ function progCard(r) {
   const all = rs.activities;
   if (!all.length) return `<section class="blk"><h3>Activities</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
   const gates = all.filter(a => a.scope !== "crop-wave"), pre = gates.filter(a => a.scope === "pre-sowing"), next = all.filter(a => a.scope === "crop-wave");
-  const doneN = l => l.filter(a => actLabel(a)[0] === "ok").length, progN = l => l.filter(a => actLabel(a)[0] === "prog").length;
+  const doneN = l => l.filter(a => a.completed || a.overridden).length, progN = l => l.filter(a => actLabel(a)[0] === "prog").length;
   const ready = pre.every(gateOk), left = pre.filter(a => !gateOk(a)).length;
   const row = (a, tag) => { const [c, t] = actLabel(a);
     return `<li class="al-row"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}</span><span class="badge ${c}">${t}</span></li>`; };

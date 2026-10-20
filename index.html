@@ -140,7 +140,7 @@ const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify
 
 /* ---------- state ---------- */
 let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = SS.get("pm_session"), T = localToday(), SEL = null, RS = {};
-let TAB = "wave", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
+let ATTALL = false, TAB = "overview", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
 const PICK = new Set(), WPICK = new Set(), DRAFT = {}, LOADING = {}, RW = {};
 let RV = "reassigned", RU = "done", AUTOLOGIN = true;
 const nowMs = () => MODE === "live" ? Date.now() + OFFSET : (D ? D.now : Date.now());
@@ -277,7 +277,7 @@ function kpis() {
   const aw = runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0), st = openAlerts().length, on = D.sessions.filter(s => !s.pausedAt).length, pa = D.sessions.length - on, rc = (D.assignLog || []).filter(x => isMove(x) && Date.parse(x.ts) > nowMs() - 7 * 864e5).length;
   const k = (a, big, lab, hot, tab) => `<button type="button" class="kp ${hot ? "hot" : ""}" ${a}><b>${big}</b>${lab}</button>`;
   $("kpi").innerHTML = k('data-a="filt" data-f="all"', `${inR}<span class="k"> / ${cap}</span>`, "Trays in room (" + fmt(T) + ")", inR > cap)
-    + k('data-a="filt" data-f="attention"', att, "Waves needing attention", att > 0) + k('data-a="tab" data-tab="review" data-rv="unverified" data-ru="done"', aw, "Done, awaiting verification", aw > 0) + k('data-a="tab" data-tab="review" data-rv="reassigned"', rc, "Reassigned (7 days)", false)
+    + k('data-a="kpiatt"', att, "Waves needing attention", att > 0) + k('data-a="tab" data-tab="review" data-rv="unverified" data-ru="done"', aw, "Done, awaiting verification", aw > 0) + k('data-a="tab" data-tab="review" data-rv="reassigned"', rc, "Reassigned (7 days)", false)
     + k('data-a="tab" data-tab="watch"', st, "Open stall alerts", st > 0) + k('data-a="tab" data-tab="crew"', on + (pa ? ` <span class="k">+${pa} paused</span>` : ""), "Sessions running", false);
 }
 
@@ -459,17 +459,20 @@ function dispatch(r, w, rs) {
     <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
 }
 function triage() {
-  const att = RI.filter(i => i.k === "attention").slice(0, 8), aw = runs().filter(r => r.acts && r.acts.awaiting > 0);
-  return `<h2>Wave</h2><p class="k">Tap a wave block or tray in the matrix to see its detail, clear its gates, set its first-leaf check and dispatch work.</p>
-    ${att.length ? `<h3>Needs attention</h3>${att.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b><br><span class="k">${esc(i.l)}</span></span><button class="alt sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("")}` : `<p class="k">No wave in the room needs attention on ${fmt(T)}.</p>`}
+  const all = RI.filter(i => i.k === "attention"), att = ATTALL ? all : all.slice(0, 8), aw = runs().filter(r => r.acts && r.acts.awaiting > 0);
+  const sr = SEL && runs().find(x => x.runId === SEL.runId);
+  return `<h2>Overview</h2>
+    ${sr ? `<div class="row" style="margin-top:0"><button type="button" data-a="tab" data-tab="wave">Back to ${esc(sr.cropName)} W${SEL.wave} ›</button></div>` : `<p class="k">Tap a wave block or tray in the matrix, or one of the waves below, to open it.</p>`}
+    ${all.length ? `<h3>Needs attention · ${all.length}</h3>${att.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b><br><span class="k">${esc(i.l)}</span></span><button class="alt sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("")}${all.length > 8 ? `<div class="row"><button class="alt sm" type="button" data-a="attall">${ATTALL ? "Show only the first 8" : "Show all " + all.length}</button></div>` : ""}` : `<p class="k">No wave in the room needs attention on ${fmt(T)}.</p>`}
     ${aw.length ? `<h3>Awaiting verification</h3>${aw.map(r => `<div class="g"><span class="n"><b>${esc(r.cropName)} · ${esc(r.runId)}</b><br><span class="k">${r.acts.awaiting} done, not verified</span></span><button class="alt sm" type="button" data-sel="${esc(r.runId)}|${r.waves[0].wave}">Open</button></div>`).join("")}` : ""}`;
 }
 function paneWave() {
   const r = SEL && runs().find(x => x.runId === SEL.runId), w = r && r.waves.find(x => x.wave === SEL.wave);
-  if (!w) return triage();
+  if (!w) return `<p class="k">No wave is open.</p><div class="row"><button type="button" data-a="tab" data-tab="overview">‹ Back to overview</button></div>`;
   const [k, l] = wst(r, w, T), rs = RS[r.runId];
   if (!rs && !LOADING[r.runId]) setTimeout(() => !RS[r.runId] && !LOADING[r.runId] && loadRun(r.runId), 0);
-  return `<div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · W${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
+  return `<div class="row" style="margin-top:0"><button class="alt sm" type="button" data-a="tab" data-tab="overview">‹ Overview</button></div>
+  <div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · W${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
   <div class="facts"><div><span class="k">Sow date</span><b>${fmt(w.sow)}</b></div><div><span class="k">Transplant (DOB)</span><b>${fmt(w.plant)}</b><span class="k">${days(T, w.plant) >= 0 ? "in " + days(T, w.plant) + " d" : -days(T, w.plant) + " d ago"}</span></div>
   <div><span class="k">Trays</span><b>${w.trays || "None (direct)"}${r.trayCells ? " · " + r.trayCells + "-cell" : ""}</b></div><div><span class="k">Material</span><b>${w.material ? w.material.toLocaleString() : "Bulk"}</b></div>
   <div><span class="k">Propagation</span><b>${esc(r.propLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(r.location)}${r.bed ? " · bed " + esc(r.bed) : ""}</b></div>
@@ -541,9 +544,10 @@ function paneLog() {
 }
 function side() {
   if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
-  const tabs = [["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
+  const sr = SEL && runs().find(x => x.runId === SEL.runId), wl = sr ? sr.cropName + " W" + SEL.wave : "Wave";
+  const tabs = [["overview", "Overview", RI.filter(i => i.k === "attention").length || ""], ["wave", wl, ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
   $("tabs").innerHTML = tabs.map(([v, l, n]) => `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-a="tab" data-tab="${v}">${l}${n ? " (" + n + ")" : ""}</button>`).join("");
-  $("pane").innerHTML = TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
+  $("pane").innerHTML = TAB === "overview" ? triage() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
 }
 
 /* ---------- render ---------- */
@@ -647,6 +651,8 @@ document.addEventListener("click", e => {
     case "theme": { const n = document.documentElement.dataset.theme === "night" ? "sun" : "night"; document.documentElement.dataset.theme = n; LS.set("pm_theme", n); header(); break; }
     case "tab": TAB = d.tab; if (d.rv) RV = d.rv; if (d.ru) RU = d.ru; side(); break;
     case "filt": FILT = d.f; render(true); break;
+    case "kpiatt": FILT = "attention"; TAB = "overview"; render(true); side(); break;
+    case "attall": ATTALL = !ATTALL; side(); break;
     case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
     case "crewv": CREW = d.v; side(); break;
     case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }

@@ -55,6 +55,11 @@ header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 
 .leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:8px 0}.leg span{display:inline-flex;gap:6px;align-items:center}.leg i{width:18px;height:18px;border-radius:4px;border:2px solid var(--edge);display:inline-block}
 .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}.facts div{border:2px solid var(--line);border-radius:10px;padding:6px 10px}.facts b{display:block}
 .pbar{display:flex;height:16px;border:2px solid var(--edge);border-radius:8px;overflow:hidden;margin:8px 0;background:var(--card)}.pbar i{display:block;height:100%}.pbar .p-dn{background:var(--acc)}.pbar .p-ip{background:var(--blue)}.pbar .p-as{background:var(--blues)}.pbar .p-un{background:var(--warns)}.pleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}.pleg span b{font-size:16px}
+.pc .phead{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}.pc .pbig{font-size:18px}.pc .pbig b{font-size:30px;line-height:1}.pc .ppct{font-size:22px;font-weight:700;color:var(--acc)}
+.ptiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:8px 0}.ptile{border:2px solid var(--edge);border-radius:10px;padding:6px 10px;display:flex;flex-direction:column;background:var(--card)}.ptile .pn{font-size:26px;font-weight:700;line-height:1.1}.ptile .pn small{font-size:14px;font-weight:400;color:var(--mute)}.ptile .pl{font-size:13px;font-weight:700}
+.ptile.t-un{background:var(--warns);border-color:var(--warnb);color:var(--warn)}.ptile.t-un .pn small{color:var(--warn)}.ptile.t-as{background:var(--blues);border-color:var(--blue);color:var(--blue)}.ptile.t-ip{background:var(--blue);border-color:var(--blue);color:#fff}.ptile.t-ip .pn small{color:#fff}.ptile.t-dn{background:var(--accs);border-color:var(--acc);color:var(--acc)}.ptile.t-dn .pn small{color:var(--acc)}
+.pgrps{border-top:2px solid var(--line);margin-top:8px;padding-top:6px}.pgrp{display:grid;grid-template-columns:150px 1fr;gap:2px 10px;align-items:center;padding:4px 0}.pgn{font-weight:700;font-size:14px}.pgt{grid-column:1/-1;font-size:13px;color:var(--mute)}.pgrp .pbar.mini{height:10px;margin:0;border-width:1px;border-radius:5px}.pwarn{color:var(--warn);font-weight:700}
+@media(max-width:520px){.pgrp{grid-template-columns:1fr}}
 .blk{border:2px solid var(--edge);border-radius:12px;padding:10px 12px;margin:12px 0}.blk h3{margin-top:0}
 .g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}.g .n{flex:1;min-width:190px}
 .act{border-bottom:2px dashed var(--line);padding:6px 0}.act label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;cursor:pointer}.act .n{flex:1;min-width:170px}
@@ -300,27 +305,44 @@ function matrix() {
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
 const statusOf = a => a.overridden ? "Overridden" : a.verified ? "Verified" : a.completed ? "Done, awaiting verification" : a.sessions && a.sessions.length ? "In progress" : a.assignee ? "Assigned" : "Not assigned";
 /* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
+const bucket = a => (a.completed || a.overridden) ? "dn" : (a.sessions && a.sessions.length) ? "ip" : a.assignee ? "as" : "un";   // mutually exclusive stages
+function tally(list) { const p = {total:list.length, un:0, as:0, ip:0, dn:0, wait:0}; list.forEach(a => { p[bucket(a)]++; if (a.completed && !a.verified && !a.overridden && a.scope !== "crop-wave") p.wait++; }); return p; }
 function prog(r) {   // {total, un, as, ip, dn}: fresh from the run detail when loaded, else from the monitor snapshot
   const rs = RS[r.runId];
-  if (rs && rs.activities) { const p = {total:rs.activities.length, un:0, as:0, ip:0, dn:0};
-    rs.activities.forEach(a => { if (a.completed || a.overridden) p.dn++; else if (a.sessions && a.sessions.length) p.ip++; else if (a.assignee) p.as++; else p.un++; }); return p; }
-  const s = r.prog; return s ? {total:s.total, un:s.unassigned, as:s.assigned, ip:s.inProg, dn:s.done} : null;
+  if (rs && rs.activities) return tally(rs.activities);
+  const s = r.prog; return s ? {total:s.total, un:s.unassigned, as:s.assigned, ip:s.inProg, dn:s.done, wait:0} : null;
 }
 function progBadge(r) {
   const p = prog(r); if (!p) return "";
   if (!p.total) return `<span class="badge open">○ No activities yet</span>`;
-  const n = p.total - p.un;
-  return `<span class="badge ${p.un ? "wait" : "ok"}" title="${p.un} unassigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${p.un ? "!" : "✓"} ${n} of ${p.total} assigned</span>`;
+  const all = p.dn === p.total;
+  return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
 }
 function progCard(r) {
   const p = prog(r);
   if (!p) return "";
   if (!p.total) return `<section class="blk"><h3>Activity progress</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
-  const n = p.total - p.un, seg = (c, v) => v ? `<i class="${c}" style="width:${v / p.total * 100}%"></i>` : "";
-  return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">Activity progress · run ${esc(r.runId)}</h3><span class="sp"></span>${progBadge(r)}</div>
-    <div class="pbar" role="img" aria-label="${n} of ${p.total} activities assigned: ${p.un} unassigned, ${p.as} assigned, ${p.ip} in progress, ${p.dn} complete">${seg("p-dn", p.dn)}${seg("p-ip", p.ip)}${seg("p-as", p.as)}${seg("p-un", p.un)}</div>
-    <div class="pleg"><span><b>${p.un}</b> of ${p.total} unassigned</span><span><b>${p.as}</b> of ${p.total} assigned</span><span><b>${p.ip}</b> of ${p.total} in progress</span><span><b>${p.dn}</b> of ${p.total} complete</span></div>
-    <p class="k">${p.un ? "Still to assign: " + p.un + ". " : "Every required activity has an owner or is complete. "}Activities are shared by every wave of this run, so these counts are the same for each wave. Complete includes manager direct-close and gate overrides.</p></section>`;
+  const rs = RS[r.runId], pct = Math.round(p.dn / p.total * 100), all = p.dn === p.total;
+  const seg = (c, v, t) => v ? `<i class="${c}" style="width:${v / t * 100}%"></i>` : "";
+  const bar = (q, cls) => `<div class="pbar ${cls || ""}" role="img" aria-label="${q.dn} complete, ${q.ip} in progress, ${q.as} assigned, ${q.un} not assigned, of ${q.total}">${seg("p-dn", q.dn, q.total)}${seg("p-ip", q.ip, q.total)}${seg("p-as", q.as, q.total)}${seg("p-un", q.un, q.total)}</div>`;
+  const tile = (cls, ic, n, lbl) => `<div class="ptile ${cls}"><span class="pn">${n}<small> / ${p.total}</small></span><span class="pl">${ic} ${lbl}</span></div>`;
+  let groups = "";
+  if (rs && rs.activities) {
+    const defs = [["pre-sowing", "Pre-sowing gates"], ["post-transplant", "Post-transplant gates"], ["crop-wave", "Crop activities"]];
+    groups = defs.map(([sc, lbl]) => { const l = rs.activities.filter(a => a.scope === sc); if (!l.length) return ""; const q = tally(l);
+      const bits = [`<b>${q.dn}</b> of ${q.total} complete`]; if (q.ip) bits.push(`${q.ip} in progress`); if (q.as) bits.push(`${q.as} assigned`); if (q.un) bits.push(`<span class="pwarn">${q.un} not assigned</span>`); if (q.wait) bits.push(`<span class="pwarn">${q.wait} awaiting verification</span>`);
+      return `<div class="pgrp"><span class="pgn">${lbl}</span>${bar(q, "mini")}<span class="pgt">${bits.join(" · ")}</span></div>`; }).join("");
+  }
+  const alerts = [];
+  if (p.un) alerts.push(`<b>${p.un}</b> activit${p.un > 1 ? "ies still need" : "y still needs"} an owner. <button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button>`);
+  if (p.wait) alerts.push(`<b>${p.wait}</b> gate step${p.wait > 1 ? "s are" : " is"} done but not yet verified.`);
+  return `<section class="blk pc"><div class="row" style="margin:0"><h3 style="margin:0">Activity progress</h3><span class="k">run ${esc(r.runId)}</span><span class="sp"></span>${progBadge(r)}</div>
+    <div class="phead"><span class="pbig"><b>${p.dn}</b> of ${p.total} complete</span><span class="ppct">${pct}%</span></div>
+    ${bar(p)}
+    <div class="ptiles">${tile("t-un", "○", p.un, "Not assigned")}${tile("t-as", "◔", p.as, "Assigned, not started")}${tile("t-ip", "◐", p.ip, "In progress")}${tile("t-dn", "●", p.dn, "Complete")}</div>
+    ${groups ? `<div class="pgrps">${groups}</div>` : ""}
+    ${alerts.length ? alerts.map(x => `<div class="al" style="padding:6px 12px">${x}</div>`).join("") : `<p class="k" style="margin:6px 0 0">${all ? "All activities are complete." : "Every activity has an owner or is complete."}</p>`}
+    <p class="k" style="margin:6px 0 0;font-size:13px">Shared by all ${r.waves.length} wave${r.waves.length > 1 ? "s" : ""} of this run. Complete includes manager direct-close and gate overrides.</p></section>`;
 }
 const dk = (...p) => p.join("|");
 const dv = k => esc(DRAFT[k] || "");

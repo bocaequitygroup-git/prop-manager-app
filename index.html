@@ -310,7 +310,7 @@ function ctls(a, r, w, gateCard) {   // manager controls for one activity
   return c.join("");
 }
 const refOf = id => ((D && D.refs) || {})[id] || {};
-const mvTxt = h => `${!h.from && h.to ? `Added <b>${esc(h.to)}</b> to the team` : `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b>`} · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
+const mvTxt = h => `${!h.from && h.to ? `Added <b>${esc(h.to)}</b> to the team` : h.from && !h.to ? `Removed <b>${esc(h.from)}</b> from the task` : `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b>`} · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
 function moveLine(a) {   // newest reassignment of this activity, always visible
   const m = (a.history || []).filter(isMove); if (!m.length) return "";
   const l = m[m.length - 1], keep = (a.assignees || []).filter(x => x.name === l.to), drop = (a.assignees || []).filter(x => x.name !== l.to);
@@ -539,7 +539,7 @@ async function doFixMove(id) {
   const m = (a.history || []).filter(isMove), l = m[m.length - 1]; if (!l) return;
   const keep = (a.assignees || []).filter(x => x.name === l.to), drop = (a.assignees || []).filter(x => x.name !== l.to);
   if (!keep.length || !drop.length) return toast("Nothing to remove.", true);
-  const note = ("Previous owner removed: " + drop.map(x => x.name).join(", ") + (l.note ? ". " + l.note : "")).slice(0, 300);
+  const note = (l.note || "Previous owner removed").slice(0, 300);
   if (!confirm(`Make ${id} a full reassignment?\n\nFrom: ${drop.map(x => x.name).join(", ")}\nTo: ${keep.map(x => x.name).join(", ")}\nBy: ${M.name}\nNote: ${note}\n\n${drop.map(x => x.name).join(", ")} will no longer be accountable for it.`)) return;
   const rs = await write("Removing previous owner", () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:keep.map(x => x.id).filter(Boolean), note}));
   done(rs, "Previous owner removed from " + id);

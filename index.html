@@ -48,6 +48,7 @@ header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 
 .wh.sel{outline:4px solid var(--edge);outline-offset:1px}.wh .sw{width:16px;height:16px;border-radius:4px;border:2px solid var(--edge)}
 .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
 .cells .cell{aspect-ratio:1;min-height:0;min-width:0;padding:0;font-size:11px;border-radius:6px;position:relative;background:var(--c,#555);color:#fff;border:3px solid transparent;text-shadow:0 0 2px #000,0 0 2px #000;overflow:hidden}
+.cells .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:13px}.cells .cell b{font-size:14px}.cells .cell small{font-size:10px;opacity:.9}.wv{display:inline-block;background:var(--ink);color:var(--card);border-radius:6px;padding:0 7px;font-weight:700}
 .cell.st-attention{border-color:var(--warnb)}.cell.st-attention::after,.cell.st-ready::after,.cell.st-post::after{position:absolute;top:0;right:0;font-size:11px;line-height:1;padding:1px 4px;border-radius:0 0 0 6px;text-shadow:none;color:#000;background:var(--warnb)}
 .cell.st-attention::after{content:"!"}.cell.st-ready{border-color:#fff;box-shadow:0 0 0 3px var(--acc)}.cell.st-ready::after{content:"\2192";background:#fff}
 .cell.st-post{background:repeating-linear-gradient(45deg,#7d8780 0 5px,#d4dad6 5px 10px);color:#000;text-shadow:none;border-color:#000}.cell.st-post::after{content:"S";background:#fff}
@@ -292,20 +293,20 @@ function matrix() {
   const tracks = [...new Set(vis.map(i => i.track))].sort();
   const sel = (i, n) => SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave;
   const grp = i => { const c = col(i.r.crop), s = sel(i);
-    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> W${i.w.wave} · ${i.w.trays} trays ${badge(i.k, i.l)} ${progBadge(i.r)}</button>
-    <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}">${esc(i.r.crop)}</button>`).join("")}</div></div>`; };
+    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> <span class="wv">W${i.w.wave}</span> · ${i.w.trays} trays ${badge(i.k, i.l)} ${progBadge(i.r)}</button>
+    <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" title="${esc(i.r.cropName)} W${i.w.wave} · tray ${n + 1} of ${i.w.trays}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}"><b>W${i.w.wave}</b><small>T${n + 1}</small></button>`).join("")}</div></div>`; };
   el.innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Propagation room</h2><span class="sp"></span>
     <button class="alt sm" type="button" data-a="day" data-d="-1" aria-label="Previous day">‹</button><input type="date" id="day" value="${T}" aria-label="Date"><button class="alt sm" type="button" data-a="day" data-d="1" aria-label="Next day">›</button><button class="alt sm" type="button" data-a="day" data-d="0">Today</button></div>
   <p><b>${tIn}</b> of ${cap} trays in the room on ${fmt(T)}${tPost ? ` · <b>${tPost}</b> bench slots awaiting sanitizing` : ""} · ${free} available${over > 0 ? ` · <b style="color:var(--bad)">${over} over capacity</b>` : ""}</p>
   <div class="chips" role="group" aria-label="Status filter">${flt.map(([v, l]) => `<button type="button" class="${FILT === v ? "on" : "alt"}" data-a="filt" data-f="${v}">${l} · ${cnt[v]}</button>`).join("")}</div>
   <div class="row"><label class="k">Crop <select id="cf"><option value="">All crops</option>${crops.map(([c, n]) => `<option value="${esc(c)}" ${c === CF ? "selected" : ""}>${esc(n)} (${esc(c)})</option>`).join("")}</select></label>
     <label class="k">Sq ft per tray <input type="number" id="sq" min="0.5" step="0.05" value="${SQ}" style="width:90px"></label></div>
-  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : 0), n = l.reduce((s, i) => s + i.w.trays, 0);
+  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => String(a.r.cropName).localeCompare(String(b.r.cropName)) || a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave), n = l.reduce((s, i) => s + i.w.trays, 0);
     return `<div class="trk"><h3 style="margin:0">Track ${esc(t)}</h3><span class="k">${n} trays shown</span></div>${l.map(grp).join("")}`; }).join("")}
   ${(FILT === "all" || FILT === "empty") && !CF ? `<div class="trk"><h3 style="margin:0">Available benches</h3><span class="k">${free} tray slots free in Bay 3</span></div><div class="cells">${Array.from({length:Math.min(free, 600)}, () => `<span class="cell e"></span>`).join("")}</div>` : ""}
   ${!vis.length && FILT !== "empty" ? `<p class="k">Nothing matches this filter on ${fmt(T)}.</p>` : ""}
   <div class="leg"><span><i style="background:#555"></i>In propagation ●</span><span><i style="background:#555;border-color:var(--warnb)"></i>Needs attention !</span><span><i style="background:#555;box-shadow:0 0 0 2px var(--acc)"></i>Transplant ≤ 3 d →</span><span><i style="background:repeating-linear-gradient(45deg,#7d8780 0 4px,#d4dad6 4px 8px)"></i>Post-transplant S</span><span><i style="border-style:dashed"></i>Available</span></div>
-  <p class="k">Capacity = ${BAY_SQFT} sq ft Bay 3 bench limit (Infra_Field) ÷ sq ft per tray. Tray colors are crops. Each block is one wave; tap a block or a tray to dispatch it. Post-transplant slots stay held until bench sanitizing (ACT-607) is verified or overridden.</p>`;
+  <p class="k">Capacity = ${BAY_SQFT} sq ft Bay 3 bench limit (Infra_Field) ÷ sq ft per tray. Tray colors are crops. Each block is one wave (W1, W2 …) and each tray shows its wave and tray number (W2 T3 = wave 2, tray 3). Tap a block or a tray to open that wave. Post-transplant slots stay held until bench sanitizing (ACT-607) is verified or overridden.</p>`;
 }
 
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
@@ -468,7 +469,7 @@ function paneWave() {
   if (!w) return triage();
   const [k, l] = wst(r, w, T), rs = RS[r.runId];
   if (!rs && !LOADING[r.runId]) setTimeout(() => !RS[r.runId] && !LOADING[r.runId] && loadRun(r.runId), 0);
-  return `<div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · wave ${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
+  return `<div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · W${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
   <div class="facts"><div><span class="k">Sow date</span><b>${fmt(w.sow)}</b></div><div><span class="k">Transplant (DOB)</span><b>${fmt(w.plant)}</b><span class="k">${days(T, w.plant) >= 0 ? "in " + days(T, w.plant) + " d" : -days(T, w.plant) + " d ago"}</span></div>
   <div><span class="k">Trays</span><b>${w.trays || "None (direct)"}${r.trayCells ? " · " + r.trayCells + "-cell" : ""}</b></div><div><span class="k">Material</span><b>${w.material ? w.material.toLocaleString() : "Bulk"}</b></div>
   <div><span class="k">Propagation</span><b>${esc(r.propLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(r.location)}${r.bed ? " · bed " + esc(r.bed) : ""}</b></div>
@@ -636,7 +637,8 @@ async function doResolve(id) {
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
   LAST = Date.now(); const b = e.target.closest("[data-a],[data-sel]"); if (!b) return; const d = b.dataset;
-  if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); if (window.innerWidth <= 980) $("side").scrollIntoView({behavior:"smooth", block:"start"}); return; }
+  if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); const rr = runs().find(x => x.runId === id); toast((rr ? rr.cropName : id) + " W" + w + " opened");
+    const sd = $("side"), bx = sd.getBoundingClientRect(); if (window.innerWidth <= 980 || bx.top < 0 || bx.top > innerHeight * .7) sd.scrollIntoView({behavior:"smooth", block:"start"}); return; }
   switch (d.a) {
     case "sync": FORCED ? goLive() : load(); break;
     case "switch": exitManager(); if (MODE === "live") openLogin(); else toast("Go live first, then sign in as the other manager.", true); break; case "offline": goOffline(); break; case "live": goLive(); break;

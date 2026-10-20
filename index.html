@@ -67,6 +67,8 @@ table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:5px 8px;
 #login{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}#login .card{width:min(380px,100%);display:grid;gap:10px}#login label{display:grid;gap:3px;font-weight:700}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:50;max-width:92vw;font-weight:700}
 body.busy{cursor:progress}
+body.out #top,body.out #kpi,body.out .lay,body.out #note{display:none!important}
+body.out #login{background:var(--bg)}
 .mv{border:2px solid var(--warnb);background:var(--warns);color:var(--warn);border-radius:10px;padding:6px 10px;margin:4px 0}
 .rg{margin:4px 0 4px 34px}.rg .team{margin:6px 0}.rg .arrow{font-weight:700;margin:4px 0}
 .rv .d{margin-left:0}
@@ -75,7 +77,6 @@ body.busy{cursor:progress}
 <header>
 <h1>Propagation Manager</h1><span class="k">Ngapori Ranch · Bay 3</span><span class="sp"></span>
 <button class="alt sm" type="button" data-a="sync" id="bRef">Refresh</button>
-<button class="alt sm hidden" id="bSwitch" type="button" data-a="switch">Switch user</button>
 <button class="alt" id="bMgr" type="button" data-a="mgr">Manager mode: off</button>
 <button class="alt sm" id="bTheme" type="button" data-a="theme">Night</button>
 </header>
@@ -87,12 +88,12 @@ body.busy{cursor:progress}
 <section class="card" id="left"><p class="k">Loading the propagation room…</p></section>
 <aside class="card" id="side"><div id="tabs" role="tablist"></div><div id="pane"></div></aside>
 </div>
-<div id="login" class="hidden" role="dialog" aria-modal="true" aria-label="Manager mode"><div class="card">
-<h2>Manager mode</h2><p class="k">Type your user name and PIN to dispatch, verify, close and override. Manager mode turns itself off after 15 minutes without use.</p>
-<label>User name <span id="luw"></span></label>
+<div id="login" class="hidden" role="dialog" aria-modal="true" aria-label="Sign in"><div class="card">
+<h2>Propagation Manager</h2><p class="k">Ranch propagation console for managers and founders. You are signed out after 15 minutes without use.</p>
+<label>Worker ID <span id="luw"></span></label>
 <label>PIN <input id="lp" type="password" inputmode="numeric" autocomplete="new-password" placeholder="PIN"></label>
 <div id="lerr" class="note bad hidden" role="alert" style="margin:0"></div>
-<div class="row" style="margin:0"><button id="lgo" type="button" data-a="login">Turn on</button><button class="alt" type="button" data-a="loginx">Cancel</button></div></div></div>
+<div class="row" style="margin:0"><button id="lgo" type="button" data-a="login">Sign in</button></div></div></div>
 <div id="toast" class="hidden" role="status" aria-live="polite"></div>
 <script>
 "use strict";
@@ -174,12 +175,12 @@ function saveSnap() {
 }
 function loadSnap() { const s = LS.get("pm_snap"); if (s && s.data && s.data.runs) { D = s.data; SNAP = s.saved; return true; } return false; }
 async function load(quiet) {
+  if (!M) return;
   if (MODE === "offline" && FORCED) return;
   SYNCING = true; connBar();
   try {
-    const d = await get({action:"monitor"});
+    const d = await get({action:"monitor", token:M.token});
     D = d; OFFSET = d.now - Date.now(); MODE = "live"; SNAP = new Date().toISOString(); ERR = ""; saveSnap();
-    if (!M && AUTOLOGIN) { AUTOLOGIN = false; setTimeout(openLogin, 0); }
   } catch (e) {
     ERR = /Unknown action/.test(e.message) ? "The server has no manager console yet. Deploy the latest Code_prop.gs as a new version, then press Sync now." : e.message;
     if (!D) loadSnap();
@@ -200,19 +201,18 @@ function connBar() {
 
 /* ---------- manager mode (PIN) ---------- */
 function openLogin() {
-  if (MODE !== "live") return toast("Go live first: Manager mode needs the server.", true);
-  $("luw").innerHTML = `<input id="lu" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Type your user name" aria-label="User name">`;
+  $("luw").innerHTML = `<input id="lu" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Worker ID" aria-label="Worker ID">`;
   $("lp").value = ""; $("lerr").classList.add("hidden"); $("login").classList.remove("hidden"); setTimeout(() => $("lu").focus(), 0);
 }
 async function doLogin() {
-  const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) { $("lerr").textContent = "Type your user name and PIN."; return $("lerr").classList.remove("hidden"); }
+  const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) { $("lerr").textContent = "Enter your Worker ID and PIN."; return $("lerr").classList.remove("hidden"); }
   $("lgo").disabled = true;
   try { const r = await post({action:"boardLogin", user:u, pin:p, device:navigator.userAgent}); $("lp").value = "";
     M = {token:r.token, name:r.user.name, role:r.user.role, id:r.user.workerId}; SS.set("pm_session", M); SS.set("pm_last", Date.now()); $("login").classList.add("hidden"); LAST = Date.now(); render(); toast("Manager mode on: " + M.name); load(true); }
   catch (e) { $("lp").value = ""; $("lerr").textContent = e.message; $("lerr").classList.remove("hidden"); }
   finally { $("lgo").disabled = false; }
 }
-function exitManager(msg) { const t = M && M.token; M = null; SS.set("pm_session", null); SS.set("pm_last", null); if (t) { try { fetch(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({action:"logout", token:t})}).catch(() => {}); } catch (e) {} } render(true); if (msg) toast(msg); }
+function exitManager(msg) { const t = M && M.token; M = null; SS.set("pm_session", null); SS.set("pm_last", null); LS.set("pm_snap", null); D = null; SNAP = null; RS = {}; SEL = null; PICK.clear(); WPICK.clear(); if (t) { try { fetch(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({action:"logout", token:t})}).catch(() => {}); } catch (e) {} } render(true); openLogin(); if (msg) toast(msg); }
 function gate() {
   if (MODE !== "live") { toast("Offline snapshot: changes are disabled. Go live first.", true); return false; }
   if (!M) { toast("Turn on Manager mode (PIN) to do that.", true); openLogin(); return false; }
@@ -254,7 +254,7 @@ function sessLine(s) {
 
 /* ---------- header, KPIs ---------- */
 function header() {
-  $("bMgr").textContent = M ? "Manager: " + M.name + " · Exit" : "Manager mode: off"; $("bMgr").className = M ? "" : "alt"; $("bSwitch").classList.toggle("hidden", !M);
+  $("bMgr").textContent = M ? M.name + " · Sign out" : "Sign in"; $("bMgr").className = M ? "" : "alt"; document.body.classList.toggle("out", !M);
   $("bTheme").textContent = document.documentElement.dataset.theme === "night" ? "Sun" : "Night";
   document.documentElement.style.setProperty("--hh", $("top").offsetHeight + "px");
 }
@@ -561,7 +561,7 @@ document.addEventListener("click", e => {
   switch (d.a) {
     case "sync": FORCED ? goLive() : load(); break;
     case "switch": exitManager(); if (MODE === "live") openLogin(); else toast("Go live first, then sign in as the other manager.", true); break; case "offline": goOffline(); break; case "live": goLive(); break;
-    case "mgr": M ? exitManager("Manager mode off") : openLogin(); break;
+    case "mgr": M ? exitManager("Signed out") : openLogin(); break;
     case "login": doLogin(); break; case "loginx": $("login").classList.add("hidden"); break;
     case "theme": { const n = document.documentElement.dataset.theme === "night" ? "sun" : "night"; document.documentElement.dataset.theme = n; LS.set("pm_theme", n); header(); break; }
     case "tab": TAB = d.tab; if (d.rv) RV = d.rv; if (d.ru) RU = d.ru; side(); break;
@@ -591,7 +591,7 @@ document.addEventListener("input", e => { const k = e.target.dataset && e.target
 ["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { LAST = Date.now(); }, {passive:true}));
 $("lp").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target && e.target.id === "lu") { e.preventDefault(); $("lp").focus(); } });
-document.addEventListener("keydown", e => { if (e.key === "Escape") $("login").classList.add("hidden"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && M) $("login").classList.add("hidden"); });
 
 /* ---------- boot ---------- */
 document.documentElement.dataset.theme = LS.get("pm_theme") === "night" ? "night" : "sun";
@@ -602,6 +602,6 @@ setInterval(() => { if (!document.hidden && !BUSY && !(MODE === "offline" && FOR
 setInterval(() => { if (M && Date.now() - LAST > IDLE_MS) exitManager("Manager mode turned off after 15 minutes without use."); }, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED) && Date.now() - Date.parse(SNAP || 0) > 30000) load(true); });
 window.addEventListener("online", () => { if (!FORCED) load(true); });
-if (loadSnap()) { MODE = "offline"; render(); }   // paint the last snapshot at once; the live sync below replaces it
-load(true);
+if (M) { if (loadSnap()) MODE = "offline"; render(); load(true); }   // signed in on this tab: paint the last snapshot, then sync
+else { LS.set("pm_snap", null); render(); openLogin(); }   // signed out: only the sign-in box, nothing loads
 </script></body></html>

@@ -48,12 +48,19 @@ header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 
 .wh.sel{outline:4px solid var(--edge);outline-offset:1px}.wh .sw{width:16px;height:16px;border-radius:4px;border:2px solid var(--edge)}
 .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
 .cells .cell{aspect-ratio:1;min-height:0;min-width:0;padding:0;font-size:11px;border-radius:6px;position:relative;background:var(--c,#555);color:#fff;border:3px solid transparent;text-shadow:0 0 2px #000,0 0 2px #000;overflow:hidden}
+.cells .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:13px}.cells .cell b{font-size:14px}.cells .cell small{font-size:10px;opacity:.9}.wv{display:inline-block;background:var(--ink);color:var(--card);border-radius:6px;padding:0 7px;font-weight:700}
 .cell.st-attention{border-color:var(--warnb)}.cell.st-attention::after,.cell.st-ready::after,.cell.st-post::after{position:absolute;top:0;right:0;font-size:11px;line-height:1;padding:1px 4px;border-radius:0 0 0 6px;text-shadow:none;color:#000;background:var(--warnb)}
 .cell.st-attention::after{content:"!"}.cell.st-ready{border-color:#fff;box-shadow:0 0 0 3px var(--acc)}.cell.st-ready::after{content:"\2192";background:#fff}
 .cell.st-post{background:repeating-linear-gradient(45deg,#7d8780 0 5px,#d4dad6 5px 10px);color:#000;text-shadow:none;border-color:#000}.cell.st-post::after{content:"S";background:#fff}
 .cell.sel{outline:4px solid var(--edge);outline-offset:1px;z-index:1}.cells .cell.e{background:transparent;border:2px dashed var(--line);cursor:default}
 .leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:8px 0}.leg span{display:inline-flex;gap:6px;align-items:center}.leg i{width:18px;height:18px;border-radius:4px;border:2px solid var(--edge);display:inline-block}
 .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}.facts div{border:2px solid var(--line);border-radius:10px;padding:6px 10px}.facts b{display:block}
+.pbar{display:flex;height:16px;border:2px solid var(--edge);border-radius:8px;overflow:hidden;margin:8px 0;background:var(--card)}.pbar i{display:block;height:100%}.pbar .p-dn{background:var(--acc)}.pbar .p-ip{background:var(--blue)}.pbar .p-as{background:var(--blues)}.pbar .p-un{background:var(--warns)}.pleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}.pleg span b{font-size:16px}
+.light{display:flex;align-items:center;gap:12px;border:2px solid var(--edge);border-radius:12px;padding:8px 14px;margin:6px 0}.light i{width:26px;height:26px;border-radius:50%;border:2px solid var(--edge);flex:none}.light span{font-size:20px;font-weight:700;display:flex;flex-direction:column}.light small{font-size:13px;font-weight:400}
+.light.go{background:var(--accs);border-color:var(--acc);color:var(--acc)}.light.go i{background:#1fb455;border-color:var(--acc);box-shadow:0 0 0 4px #bfe9cb}.light.stop{background:var(--warns);border-color:var(--warnb);color:var(--warn)}.light.stop i{background:#e27100;border-color:var(--warn)}
+.nxt{display:flex;flex-direction:column;gap:3px;border:3px solid var(--blue);background:var(--blues);color:var(--ink);border-radius:12px;padding:10px 14px;margin:8px 0}.nxt .nx-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}.nxt .nx-t{font-size:18px}.nxt .nx-x{font-size:14px}.nxt button{align-self:flex-start;margin-top:6px}
+.grp{border:2px solid var(--line);border-radius:10px;padding:2px 10px;margin:6px 0;background:var(--card)}.grp>summary{font-weight:700;padding:6px 0;cursor:pointer}.grp.cur{border-color:var(--blue)}.grp.dim{background:#e9ece9;border-color:#b5bdb7;color:#5d6a62}.grp.dim>summary{color:#5d6a62}.al-row.dim{color:#6b776f}.al-row.dim .al-n b{color:#6b776f}.badge.gry{background:#e1e5e2;border-color:#aab3ad;color:#55625a}
+.al-list{list-style:none;margin:0;padding:0}.al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.al-row:last-child{border-bottom:0}.al-n{display:flex;flex-direction:column}.al-w{font-size:13px}.badge.prog{background:var(--blue);color:#fff;border-color:var(--blue)}
 .blk{border:2px solid var(--edge);border-radius:12px;padding:10px 12px;margin:12px 0}.blk h3{margin-top:0}
 .g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}.g .n{flex:1;min-width:190px}
 .act{border-bottom:2px dashed var(--line);padding:6px 0}.act label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;cursor:pointer}.act .n{flex:1;min-width:170px}
@@ -133,7 +140,7 @@ const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify
 
 /* ---------- state ---------- */
 let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = SS.get("pm_session"), T = localToday(), SEL = null, RS = {};
-let TAB = "wave", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
+let TAB = "waves", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
 const PICK = new Set(), WPICK = new Set(), DRAFT = {}, LOADING = {}, RW = {};
 let RV = "reassigned", RU = "done", AUTOLOGIN = true;
 const nowMs = () => MODE === "live" ? Date.now() + OFFSET : (D ? D.now : Date.now());
@@ -181,6 +188,7 @@ async function load(quiet) {
   try {
     const d = await get({action:"monitor", token:M.token});
     D = d; OFFSET = d.now - Date.now(); MODE = "live"; SNAP = new Date().toISOString(); ERR = ""; saveSnap();
+    await freshRun();
   } catch (e) {
     ERR = /Unknown action/.test(e.message) ? "The server has no manager console yet. Deploy the latest Code_prop.gs as a new version, then press Sync now." : e.message;
     if (!D) loadSnap();
@@ -228,6 +236,11 @@ function applyRun(rs) {   // a write returns the run's fresh state: keep it, and
   if (r && r.waves && rs.leaf) r.waves.forEach(w => { w.leaf = rs.leaf[w.wave] || null; });
   if (r && r.gates) r.gates = rs.activities.filter(a => a.scope !== "crop-wave").map(a => ({id:a.id, name:a.name, scope:a.scope, completed:a.completed, verified:a.verified, overridden:a.overridden, assignee:a.assignee || "", completedBy:a.completedBy || "", overrideReason:a.overrideReason || ""}));
 }
+async function freshRun() {   // re-read the open run on every sync so worker completions show here; other runs reload when opened
+  const keep = SEL && SEL.runId; Object.keys(RS).forEach(id => { if (id !== keep) delete RS[id]; });
+  if (!keep || LOADING[keep]) return;
+  try { const rs = await get({action:"run", runId:keep}); if (rs && rs.activities) applyRun(rs); } catch (e) {}
+}
 async function loadRun(id) { LOADING[id] = 1; try { RS[id] = await get({action:"run", runId:id}); } catch (e) { RS[id] = {runId:id, activities:[], leaf:{}, error:e.message}; toast(e.message, true); } delete LOADING[id]; render(true); }
 
 /* ---------- crew ---------- */
@@ -264,7 +277,7 @@ function kpis() {
   const aw = runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0), st = openAlerts().length, on = D.sessions.filter(s => !s.pausedAt).length, pa = D.sessions.length - on, rc = (D.assignLog || []).filter(x => isMove(x) && Date.parse(x.ts) > nowMs() - 7 * 864e5).length;
   const k = (a, big, lab, hot, tab) => `<button type="button" class="kp ${hot ? "hot" : ""}" ${a}><b>${big}</b>${lab}</button>`;
   $("kpi").innerHTML = k('data-a="filt" data-f="all"', `${inR}<span class="k"> / ${cap}</span>`, "Trays in room (" + fmt(T) + ")", inR > cap)
-    + k('data-a="filt" data-f="attention"', att, "Waves needing attention", att > 0) + k('data-a="tab" data-tab="review" data-rv="unverified" data-ru="done"', aw, "Done, awaiting verification", aw > 0) + k('data-a="tab" data-tab="review" data-rv="reassigned"', rc, "Reassigned (7 days)", false)
+    + k('data-a="kpiatt"', att, "Waves needing attention", att > 0) + k('data-a="tab" data-tab="review" data-rv="unverified" data-ru="done"', aw, "Done, awaiting verification", aw > 0) + k('data-a="tab" data-tab="review" data-rv="reassigned"', rc, "Reassigned (7 days)", false)
     + k('data-a="tab" data-tab="watch"', st, "Open stall alerts", st > 0) + k('data-a="tab" data-tab="crew"', on + (pa ? ` <span class="k">+${pa} paused</span>` : ""), "Sessions running", false);
 }
 
@@ -280,29 +293,138 @@ function matrix() {
   const tracks = [...new Set(vis.map(i => i.track))].sort();
   const sel = (i, n) => SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave;
   const grp = i => { const c = col(i.r.crop), s = sel(i);
-    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> W${i.w.wave} · ${i.w.trays} trays ${badge(i.k, i.l)}</button>
-    <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}">${esc(i.r.crop)}</button>`).join("")}</div></div>`; };
+    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> <span class="wv">W${i.w.wave}</span> · ${i.w.trays} trays ${badge(i.k, i.l)} ${progBadge(i.r)}</button>
+    <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" title="${esc(i.r.cropName)} W${i.w.wave} · tray ${n + 1} of ${i.w.trays}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}"><b>W${i.w.wave}</b><small>T${n + 1}</small></button>`).join("")}</div></div>`; };
   el.innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Propagation room</h2><span class="sp"></span>
     <button class="alt sm" type="button" data-a="day" data-d="-1" aria-label="Previous day">‹</button><input type="date" id="day" value="${T}" aria-label="Date"><button class="alt sm" type="button" data-a="day" data-d="1" aria-label="Next day">›</button><button class="alt sm" type="button" data-a="day" data-d="0">Today</button></div>
   <p><b>${tIn}</b> of ${cap} trays in the room on ${fmt(T)}${tPost ? ` · <b>${tPost}</b> bench slots awaiting sanitizing` : ""} · ${free} available${over > 0 ? ` · <b style="color:var(--bad)">${over} over capacity</b>` : ""}</p>
   <div class="chips" role="group" aria-label="Status filter">${flt.map(([v, l]) => `<button type="button" class="${FILT === v ? "on" : "alt"}" data-a="filt" data-f="${v}">${l} · ${cnt[v]}</button>`).join("")}</div>
   <div class="row"><label class="k">Crop <select id="cf"><option value="">All crops</option>${crops.map(([c, n]) => `<option value="${esc(c)}" ${c === CF ? "selected" : ""}>${esc(n)} (${esc(c)})</option>`).join("")}</select></label>
     <label class="k">Sq ft per tray <input type="number" id="sq" min="0.5" step="0.05" value="${SQ}" style="width:90px"></label></div>
-  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : 0), n = l.reduce((s, i) => s + i.w.trays, 0);
+  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave), n = l.reduce((s, i) => s + i.w.trays, 0);
     return `<div class="trk"><h3 style="margin:0">Track ${esc(t)}</h3><span class="k">${n} trays shown</span></div>${l.map(grp).join("")}`; }).join("")}
   ${(FILT === "all" || FILT === "empty") && !CF ? `<div class="trk"><h3 style="margin:0">Available benches</h3><span class="k">${free} tray slots free in Bay 3</span></div><div class="cells">${Array.from({length:Math.min(free, 600)}, () => `<span class="cell e"></span>`).join("")}</div>` : ""}
   ${!vis.length && FILT !== "empty" ? `<p class="k">Nothing matches this filter on ${fmt(T)}.</p>` : ""}
   <div class="leg"><span><i style="background:#555"></i>In propagation ●</span><span><i style="background:#555;border-color:var(--warnb)"></i>Needs attention !</span><span><i style="background:#555;box-shadow:0 0 0 2px var(--acc)"></i>Transplant ≤ 3 d →</span><span><i style="background:repeating-linear-gradient(45deg,#7d8780 0 4px,#d4dad6 4px 8px)"></i>Post-transplant S</span><span><i style="border-style:dashed"></i>Available</span></div>
-  <p class="k">Capacity = ${BAY_SQFT} sq ft Bay 3 bench limit (Infra_Field) ÷ sq ft per tray. Tray colors are crops. Each block is one wave; tap a block or a tray to dispatch it. Post-transplant slots stay held until bench sanitizing (ACT-607) is verified or overridden.</p>`;
+  <p class="k">Capacity = ${BAY_SQFT} sq ft Bay 3 bench limit (Infra_Field) ÷ sq ft per tray. Tray colors are crops. Each block is one wave (W1, W2 …) and each tray shows its wave and tray number (W2 T3 = wave 2, tray 3). Tap a block or a tray to open that wave. Post-transplant slots stay held until bench sanitizing (ACT-607) is verified or overridden.</p>`;
 }
 
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
-const statusOf = a => a.overridden ? "Overridden" : a.verified ? "Verified" : a.completed ? "Done, awaiting verification" : a.sessions && a.sessions.length ? "In progress" : a.assignee ? "Assigned" : "Not assigned";
+const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? "In progress" + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.join(", ") : "") : a.assignee ? "Assigned" : "Not assigned"; };
+/* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
+let WV = null;   // wave the open panel shows: activities are shared by the run, but each worker's portion is submitted and verified per wave
+function actKind(a, w) {   // {k: done | wait | prog | as | un, sub, tot}: done = every assigned worker's portion verified by the manager
+  const S = a.sessions || [], P = a.portions || [], wv = w || WV, crop = a.scope === "crop-wave";
+  if (a.overridden) return {k: "done"};
+  const p = crop ? (wv ? P.find(x => x.wave === wv.wave) : null) : (P.find(x => x.cleared) || P[0]);
+  if (p) { const rq = p.workers.filter(x => x.required), L = rq.length ? rq : p.workers, sub = L.filter(x => x.submitted).length, tot = L.length, ver = L.filter(x => x.verified).length, miss = L.filter(x => !x.submitted).map(x => x.name);
+    if (p.cleared) return {k: "done", sub, tot, ver, miss}; if (tot && sub >= tot) return {k: "wait", sub, tot, ver, miss}; return {k: "prog", sub, tot, ver, miss}; }
+  if (!P.length && a.completed) return {k: a.verified ? "done" : "wait"};   // closed directly by a manager
+  if (S.some(s => !crop || !wv || Number(s.wave) === wv.wave)) return {k: "prog", sub: 0, tot: (a.assignees || []).length};
+  return {k: a.assignee ? "as" : "un"};
+}
+const bucket = a => (a.cleared || a.overridden) ? "dn" : ((a.sessions && a.sessions.length) || (a.portions && a.portions.length)) ? "ip" : a.assignee ? "as" : "un";   // mutually exclusive stages
+const waitingOn = a => { const crop = a.scope === "crop-wave", out = []; (a.portions || []).filter(p => !crop || !WV || p.wave === WV.wave).forEach(p => p.workers.forEach(x => { if (x.required && !x.submitted && !out.includes(x.name)) out.push(x.name); })); return out; };   // team members who have not submitted yet
+async function doDropWorker(id, who) {   // takes a worker who did not do the task off its team; everyone who submitted keeps their verified work
+  const c = cur(); if (!c || !c.rs) return; const a = c.rs.activities.find(x => x.id === id); if (!a) return;
+  const keep = (a.assignees || []).filter(x => x.name !== who), nk = dk("dn", c.r.runId, id), note = (DRAFT[nk] || "").trim();
+  if (!keep.length || keep.some(x => !x.id)) return toast("That would leave no valid team. Use Reassign to choose who does it.", true);
+  if (!note) return toast("Write why " + who + " is coming off this task first. It is required and is kept in the trail.", true);
+  if (!confirm(`Remove ${who} from ${id} ${a.name}?\n\nThis applies to every wave of run ${c.r.runId}. ${who} will no longer be accountable for it. Everyone who submitted keeps their verified work.\n\nNote: ${note}`)) return;
+  const rs = await write("Removing " + who, () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:keep.map(x => x.id), note}));
+  if (rs) delete DRAFT[nk]; done(rs, who + " removed from " + id);
+}
+function portNote(a) {   // each worker's own portion: working, submitted, verified
+  if (a.overridden) return "";
+  const P = a.portions || [], crop = a.scope === "crop-wave", S = a.sessions || [];
+  const lines = P.filter(p => !crop || !WV || p.wave === WV.wave).map(p => (crop ? "W" + p.wave + ": " : "") + p.workers.map(x => esc(x.name) + (x.verified ? " ✓ verified" + (S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · ⚠ session still open" : "") : x.submitted ? " · submitted, awaiting verification" : S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · working" : x.required ? " · not submitted" : "")).join("; "));
+  return lines.length ? `<div class="d k">${lines.join("<br>")}</div>` : S.length ? `<div class="d k">Working now: ${S.map(s => esc(s.by) + (crop ? " W" + s.wave : "")).join(", ")}</div>` : "";
+}
+function portBox(a, r) {   // manager audit: verify each worker's submitted portion on its own
+  const crop = a.scope === "crop-wave", P = (a.portions || []).filter(p => !crop || !WV || p.wave === WV.wave); if (!P.length) { const o = crop ? (a.portions || []).filter(p => p.workers.some(x => x.submitted && !x.verified)).map(p => p.wave) : []; return o.length ? `<div class="d"><span class="badge wait">! Submitted on ${o.length > 1 ? "waves" : "wave"} ${o.join(", ")}, not on the wave you have open</span> ${o.slice(0, 5).map(n => `<button type="button" class="alt sm" data-sel="${esc(r.runId)}|${n}">Open wave ${n}</button>`).join(" ")}</div>` : ""; }
+  const q = x => x.qty !== "" && x.qty != null ? " · " + esc(x.qty) + " " + esc(x.unit) : "";
+  return `<div class="d"><b>Worker portions</b> <span class="k">each must be verified before the phase can advance</span>${P.map(p => `${crop ? `<div class="k">Wave ${p.wave}${p.cleared ? " · all verified" : ""}</div>` : ""}${p.workers.map(x => {
+    if (x.verified) return `<div class="k">✓ ${esc(x.name)}${q(x)} · verified by ${esc(x.verifiedBy)}${x.notes ? " · " + esc(x.notes) : ""}</div>`;
+    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
+    if (x.required && (a.assignees || []).length > 1 && a.scope === "crop-wave") return `<div class="frm"><span class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : "not submitted yet"}</span><input type="text" maxlength="300" data-d="${dk("dn", r.runId, a.id)}" value="${dv(dk("dn", r.runId, a.id))}" placeholder="Why is ${esc(x.name)} coming off this task? (required)" aria-label="Reason to remove ${esc(x.name)}"><button type="button" class="alt sm" data-a="dropw" data-id="${esc(a.id)}" data-who="${esc(x.name)}">Remove ${esc(x.name)} from task</button></div>`;
+    return `<div class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : x.required ? "not submitted yet" : "no submission"}</div>`; }).join("")}`).join("")}</div>`;
+}
+function tally(list) { const p = {total:list.length, un:0, as:0, ip:0, dn:0, wait:0}; list.forEach(a => { p[bucket(a)]++; if (a.completed && !a.verified && !a.overridden && a.scope !== "crop-wave") p.wait++; }); return p; }
+function prog(r) {   // {total, un, as, ip, dn}: fresh from the run detail when loaded, else from the monitor snapshot
+  const rs = RS[r.runId];
+  if (rs && rs.activities) return tally(rs.activities);
+  const s = r.prog; return s ? {total:s.total, un:s.unassigned, as:s.assigned, ip:s.inProg, dn:s.done, wait:0} : null;
+}
+function progBadge(r) {
+  const p = prog(r); if (!p) return "";
+  if (!p.total) return `<span class="badge open">○ No activities yet</span>`;
+  const all = p.dn === p.total;
+  return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
+}
+function actLabel(a) {   // [css, text] one plain status word per activity
+  if (a.overridden) return ["ok", "✓ Completed (overridden)"];
+  const q = actKind(a), n = a.scope === "crop-wave" && WV ? " · W" + WV.wave : "";
+  if (q.k === "done") return ["ok", "✓ Completed · verified" + n];
+  if (q.k === "wait") return ["wait", "! Submitted · needs verification" + n];
+  if (q.k === "prog") return ["prog", ((a.sessions || []).some(s => !(a.scope === "crop-wave" && WV) || Number(s.wave) === WV.wave) ? "◐ Working now" : "◐ Partly done, nobody working now") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.map(esc).join(", ") : "") + n];
+  return a.assignee ? ["open", "◔ Assigned"] : ["wait", "○ Not assigned"];
+}
+const UIOPEN = {};   // remembers which lists the manager expanded or collapsed across re-draws
+document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.ok; if (k) UIOPEN[k] = e.target.open; }, true);
+const isDone = a => actKind(a).k === "done";
+function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the manager does now
+  const step = (t, x, btn) => `<div class="nxt"><span class="nx-k">What to do next</span><b class="nx-t">${t}</b><span class="nx-x">${x}</span>${btn || ""}</div>`;
+  const pre = gates.filter(a => a.scope === "pre-sowing"), pend = gates.filter(a => a.pending > 0 && !a.overridden && a.scope === "pre-sowing");
+  const un = pre.filter(a => !isDone(a) && !a.assignee), ids = l => l.map(a => a.id).join(",");
+  const tick = (l, label) => `<button type="button" data-a="pickall" data-m="ids" data-ids="${esc(ids(l))}">${label}</button>`;
+  if (pend.length) return step(`Verify ${pend.length} completed step${pend.length > 1 ? "s" : ""}`, `Workers finished ${pend.map(a => esc(a.id + " " + a.name)).join(", ")}. Check the bench, then press Verify.`, `<button type="button" data-a="verifyall">Verify bed ready (${pend.length})</button>`);
+  if (un.length) return step(`Assign ${un.length} required activit${un.length > 1 ? "ies" : "y"}`, `${un.map(a => esc(a.id + " " + a.name)).join(", ")} must be done before sowing. Tick them, tick the workers, press Assign.`, tick(un, "Tick these and choose workers"));
+  const wait = pre.filter(a => !gateOk(a));
+  if (wait.length) return step("Wait for the workers", `${wait.length} required activit${wait.length > 1 ? "ies are" : "y is"} with workers (${wait.filter(a => a.sessions && a.sessions.length).length} in progress). Nothing to do here until they finish.`);
+  const lf = !r.direct && !leafOk(w) && leafDue(w, T) ? ` The first-leaf check for wave ${w.wave} is also due: set it under First-leaf check.` : "";
+  const phs = []; next.slice().sort((x, y) => x.id < y.id ? -1 : 1).forEach(a => { const p = a.phase || "Activities"; let g = phs.find(x => x.p === p); if (!g) phs.push(g = {p, l:[]}); g.l.push(a); });
+  const cp = phs.find(g => g.l.some(a => !isDone(a)));
+  if (!cp) return step("Everything is complete", "All required and next activities for this run are done.");
+  const cun = cp.l.filter(a => !isDone(a) && !a.assignee);
+  const held = cun.filter(a => a.hold);
+  if (held.length) { const need = rs.activities.filter(a => (held[0].holdIds || []).includes(a.id)), tv = need.some(a => a.pending > 0);
+    return step(`${tv ? "Verify" : "Finish"} ${esc(held[0].hold)} before assigning ${esc(cp.p)}`, `Phase hold: ${need.map(a => esc(a.id + " " + a.name) + (a.pending ? " (" + a.pending + " submitted, to verify)" : waitingOn(a).length ? " (waiting on " + waitingOn(a).map(esc).join(", ") + ")" : " (not every worker has submitted)")).join(", ")}. ${tv ? "Verify each submitted portion in the list below. " : ""}An activity completes only when every worker on its team has submitted and been verified. If someone did not work on a task, press Remove from task under their name in that activity.${lf}`); }
+  if (cun.length) return step(`Required activities are cleared. Assign ${esc(cp.p)}`, `${cun.length} activit${cun.length > 1 ? "ies" : "y"} not assigned, starting with ${esc(cun[0].id + " " + cun[0].name)}.${lf}`, tick(cun, "Tick these and choose workers"));
+  const pw = a => { const p = (a.portions || []).find(x => x.wave === w.wave); return p ? p.workers.filter(x => x.submitted && !x.verified).length : 0; }, pn = cp.l.filter(a => pw(a) > 0);
+  if (pn.length) { const n = pn.reduce((s, a) => s + pw(a), 0);
+    return step(`Verify ${n} submitted worker portion${n > 1 ? "s" : ""} in ${esc(cp.p)}`, `${pn.map(a => esc(a.id + " " + a.name) + " (" + pw(a) + ")").join(", ")}. Check each worker's work, add notes if needed, and press Verify beside their name in the list below. The next phase stays on hold until every portion is verified.${lf}`, `<button type="button" data-a="verifyphase" data-p="${esc(cp.p)}">Verify all submitted on wave ${w.wave}…</button>`); }
+  return step(`Wait for ${esc(cp.p)}`, `All activities in this phase are assigned (${cp.l.filter(a => a.sessions && a.sessions.length).length} in progress, ${cp.l.filter(isDone).length} of ${cp.l.length} completed).${lf}`);
+}
+function progCard(r, w) {
+  WV = w; const rs = RS[r.runId];
+  if (!rs || !rs.activities) return `<section class="blk"><h3>Activities</h3><p class="k">Loading activities…</p></section>`;
+  const all = rs.activities;
+  if (!all.length) return `<section class="blk"><h3>Activities</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
+  const gates = all.filter(a => a.scope !== "crop-wave"), pre = gates.filter(a => a.scope === "pre-sowing"), next = all.filter(a => a.scope === "crop-wave");
+  const doneN = l => l.filter(isDone).length, progN = l => l.filter(a => actLabel(a)[0] === "prog").length;
+  const ready = pre.every(gateOk), left = pre.filter(a => !gateOk(a)).length, key = (...p) => r.runId + "|" + p.join("|");
+  const op = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
+  const row = (a, tag) => { const [c, t] = actLabel(a), dn = isDone(a);
+    return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}${portNote(a)}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>${(() => { const b = (a.pending || (!isDone(a) && waitingOn(a).length && a.portions && a.portions.length)) && !a.overridden ? portBox(a, r) : ""; return b ? `<li class="al-row" style="display:block">${b}</li>` : ""; })()}`; };
+  const cnt = l => `${doneN(l)} of ${l.length} completed${progN(l) ? ", " + progN(l) + " in progress" : ""}`;
+  const reqDone = gates.length && gates.every(isDone), kg = key("req");
+  const req = !gates.length ? "" : `<details class="grp ${reqDone ? "dim" : ""}" data-ok="${esc(kg)}" ${op(kg, !reqDone)}><summary>${reqDone ? "✓ " : ""}Required activities · ${cnt(gates)}</summary><ul class="al-list">${gates.map(a => row(a, a.scope === "post-transplant" ? "after transplant" : "before sowing")).join("")}</ul></details>`;
+  const phs = []; next.slice().sort((x, y) => x.id < y.id ? -1 : 1).forEach(a => { const p = a.phase || "Activities"; let g = phs.find(x => x.p === p); if (!g) phs.push(g = {p, l:[]}); g.l.push(a); });
+  const cp = phs.find(g => g.l.some(a => !isDone(a)));
+  const nx = !next.length ? "" : `<h3 style="margin:12px 0 4px">Next activities · ${cnt(next)}</h3>` + phs.map(g => { const fin = g.l.every(isDone), cur = g === cp, k = key("ph", g.p);
+    const tag = fin ? "completed" : cur ? "up next" : "later";
+    return `<details class="grp ${fin ? "dim" : ""} ${cur ? "cur" : ""}" data-ok="${esc(k)}" ${op(k, (cur && ready) || g.l.some(a => a.pending > 0))}><summary>${fin ? "✓ " : cur ? "▶ " : ""}${esc(g.p)} · ${cnt(g.l)} <span class="k">(${tag})</span></summary><ul class="al-list">${g.l.map(a => row(a, a.locked ? "locked until required activities are cleared" : "")).join("")}</ul></details>`; }).join("");
+  return `<section class="blk pc"><h3 style="margin:0 0 6px">Activities · run ${esc(r.runId)}</h3>
+    ${pre.length ? `<div class="light ${ready ? "go" : "stop"}"><i></i><span>${ready ? "Ready to sow" : "Not ready to sow"}<small>${ready ? "All required activities before sowing are cleared." : left + " required activit" + (left > 1 ? "ies" : "y") + " still to clear before sowing."}</small></span></div>` : ""}
+    ${nextStep(r, w, rs, gates, next)}${req}${nx}
+    <p class="k" style="margin:8px 0 0;font-size:13px">Shared by all ${r.waves.length} wave${r.waves.length > 1 ? "s" : ""} of this run.</p></section>`;
+}
 const dk = (...p) => p.join("|");
 const dv = k => esc(DRAFT[k] || "");
 function ctls(a, r, w, gateCard) {   // manager controls for one activity
   const run = r.runId, id = a.id, gate = a.scope !== "crop-wave", c = [];
-  if (a.completed && !a.verified && !a.overridden) c.push(`<div class="frm"><input type="text" data-d="${dk("n", run, id)}" value="${dv(dk("n", run, id))}" placeholder="Verification notes (optional)" aria-label="Verification notes for ${esc(id)}"><button type="button" class="sm" data-a="verify" data-id="${esc(id)}">Verify</button></div>`);
+  if (!a.overridden) c.push(portBox(a, r));
+  if (a.completed && !a.verified && !a.overridden && !(a.portions || []).length) c.push(`<div class="frm"><input type="text" data-d="${dk("n", run, id)}" value="${dv(dk("n", run, id))}" placeholder="Verification notes (optional)" aria-label="Verification notes for ${esc(id)}"><button type="button" class="sm" data-a="verify" data-id="${esc(id)}">Verify</button></div>`);
   if (!a.completed) c.push(`<details ${gateCard ? "" : ""}><summary>Direct close</summary><p class="k">Marks it done without a worker session. The reason is logged.</p><div class="frm"><input type="text" data-d="${dk("c", run, id)}" value="${dv(dk("c", run, id))}" placeholder="Reason (required)" aria-label="Reason for closing ${esc(id)}">
     ${a.requiresCount ? `<input type="number" min="0" step="any" data-d="${dk("cc", run, id)}" value="${dv(dk("cc", run, id))}" placeholder="Qty" aria-label="Quantity"><input class="u" type="text" data-d="${dk("cu", run, id)}" value="${dv(dk("cu", run, id))}" placeholder="Unit" aria-label="Unit">` : ""}
     <button type="button" class="alt sm" data-a="close" data-id="${esc(id)}">Close it</button></div></details>`);
@@ -331,14 +453,15 @@ function gateRow(a, r, w) {
   if (a.completed) bits.push(`Completed ${when(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
   if (a.verified) bits.push(`Verified ${when(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
   if (a.overridden) bits.push(`<b>Overridden</b> by ${esc(a.overrideBy || "manager")}: ${esc(a.overrideReason)}`);
-  return `<div class="act"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}</span><span class="badge ${ok ? "ok" : a.completed ? "wait" : "open"}">${ok ? "✓" : a.completed ? "!" : "○"} ${esc(statusOf(a))}</span></div>
+  return `<div class="act"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}</span><span class="badge ${ok ? "ok" : actKind(a).k === "wait" ? "wait" : "open"}">${ok ? "✓" : actKind(a).k === "wait" ? "!" : "○"} ${esc(statusOf(a))}</span></div>
     ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}${a.assignee ? `<div class="d">Team: ${esc(String(a.assignee).replace(/;\s*/g, ", "))}</div>` : ""}${moveLine(a)}${bits.length ? `<div class="d">${bits.join("<br>")}</div>` : ""}${reassignBox(a, r)}<div style="margin-left:0">${ctls(a, r, w, true)}</div></div>`;
 }
 function gatesCard(r, w, rs) {
+  WV = w;
   if (r.direct && !(r.gates || []).length) return `<section class="blk"><h3>Stage gates</h3><p class="k">None: this crop is direct-seeded or a crown, so it skips the nursery.</p></section>`;
   const list = rs ? rs.activities.filter(a => a.scope !== "crop-wave") : (r.gates || []);
   const pre = list.filter(a => a.scope === "pre-sowing"), post = list.filter(a => a.scope === "post-transplant"), okN = x => x.filter(gateOk).length;
-  const pend = list.filter(a => a.completed && !a.verified && !a.overridden).length;
+  const pend = list.reduce((n, a) => n + (a.overridden ? 0 : a.pending || 0), 0);
   const grp = (t, x) => x.length ? `<h3>${t} · ${okN(x)} of ${x.length} cleared</h3>${x.map(a => gateRow(a, r, w)).join("")}` : "";
   return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">Stage gates</h3><span class="sp"></span>${pend ? `<button type="button" data-a="verifyall">Verify bed ready (${pend} done)</button>` : ""}</div>
     <p class="k">Pre-sowing steps must be done and verified, or overridden with a reason, before any later activity can start. Run ${esc(r.runId)}: ${(r.acts && r.acts.gatesOk) != null ? r.acts.gatesOk + " of " + r.acts.gates : "?"} cleared.</p>
@@ -357,39 +480,42 @@ function leafCard(r, w, rs) {
     ${o === "PASS" || o === "OVERRIDDEN" ? "" : `<details><summary>Override first-leaf check</summary><div class="frm"><input type="text" data-d="${kk}" value="${dv(kk)}" placeholder="Reason (required)" aria-label="Override reason"><button type="button" class="dng sm" data-a="leaf" data-o="OVERRIDDEN">Override</button></div></details>`}</section>`;
 }
 function dispatch(r, w, rs) {
+  WV = w;
   if (!rs) return `<section class="blk"><h3>Dispatch</h3><p class="k">Loading activities…</p></section>`;
   if (!rs.activities.length) return `<section class="blk"><h3>Dispatch</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
   const by = {}; rs.activities.forEach(a => (by[a.phase || "Required gate activities"] = by[a.phase || "Required gate activities"] || []).push(a)); const ph = Object.entries(by);
   const crew = new Map(crewData().map(e => [e.id, e]));
   const row = a => {
     const gate = a.scope !== "crop-wave", fb = a.feed && !r.direct && !leafOk(w), tr = a.history || [];
-    return `<div class="act"><label><input type="checkbox" data-pick="${esc(a.id)}" ${PICK.has(a.id) ? "checked" : ""} aria-label="Select ${esc(a.name)}"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge st-attention">gate</span>' : ""}</span><span class="k">${esc(statusOf(a))}${a.assignee ? " · " + esc(String(a.assignee).replace(/;\s*/g, ", ")) : ""}</span></label>
+    return `<div class="act"><label><input type="checkbox" data-pick="${esc(a.id)}" ${PICK.has(a.id) ? "checked" : ""} ${a.hold && !a.assignee ? "disabled" : ""} aria-label="Select ${esc(a.name)}"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge st-attention">gate</span>' : ""}</span><span class="k">${esc(statusOf(a))}${a.assignee ? " · " + esc(String(a.assignee).replace(/;\s*/g, ", ")) : ""}</span></label>
       ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}
-      ${a.locked ? `<div class="d"><span class="badge wait">! Locked until the stage gates are cleared</span></div>` : ""}${fb ? `<div class="d"><span class="badge bad">✕ Blocked: first-leaf check for wave ${w.wave} is not Pass</span></div>` : ""}
-      ${a.sessions && a.sessions.length ? `<div class="d">Working now: ${a.sessions.map(s => esc(s.by) + " (wave " + s.wave + ")").join(", ")}</div>` : ""}
+      ${a.locked ? `<div class="d"><span class="badge wait">! Locked until the stage gates are cleared</span></div>` : ""}${a.hold && !a.assignee ? `<div class="d"><span class="badge bad">✕ Phase hold: finish and verify ${esc(a.hold)} (${esc((a.holdIds || []).join(", "))}) before assigning this</span></div>` : ""}${fb ? `<div class="d"><span class="badge bad">✕ Blocked: first-leaf check for wave ${w.wave} is not Pass</span></div>` : ""}
+      ${portNote(a)}
       ${moveLine(a)}${reassignBox(a, r)}
       ${tr.length ? `<details><summary>Trail (${tr.length})</summary>${tr.slice().reverse().map(h => `<div class="k">${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}</div>`).join("")}</details>` : ""}
-      ${a.scope === "crop-wave" ? `<details><summary>Manager actions</summary>${ctls(a, r, w, false) || `<p class="k">Nothing to do.</p>`}</details>` : ""}</div>`; };
+      ${a.scope === "crop-wave" ? `<details ${a.pending ? "open" : ""}><summary>Manager actions${a.pending ? " · " + a.pending + " to verify" : ""}</summary>${ctls(a, r, w, false) || `<p class="k">Nothing to do.</p>`}</details>` : ""}</div>`; };
   const a = PICK.size, n = WPICK.size;
   return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; a short note is required and the change is kept in its trail (from, to, by, note).</p>
     <div class="row"><button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button><button class="alt sm" type="button" data-a="pickall" data-m="all">Tick all</button><button class="alt sm" type="button" data-a="pickall" data-m="none">Clear</button></div>
-    ${ph.map(([p, l], i) => `<details ${l.some(x => !x.assignee && !x.completed) ? "open" : ""}><summary>${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned</summary>${l.map(row).join("")}</details>`).join("")}
+    ${ph.map(([p, l], i) => `<details ${l.some(x => !x.assignee && !x.completed) || l.some(x => x.pending > 0) ? "open" : ""}><summary>${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned</summary>${l.map(row).join("")}</details>`).join("")}
     <h3 id="wlist">Workers</h3>${D.workers.length ? `<div class="team">${D.workers.map(x => { const e = crew.get(String(x.id)); return `<label><input type="checkbox" data-wk="${esc(x.id)}" ${WPICK.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${e && e.st !== "IDLE" ? " · " + WS[e.st].toLowerCase() + (e.tasks.length ? ", " + e.tasks.length + " open" : "") : ""}</span></span></label>`; }).join("")}</div>` : `<p class="k">No active workers in USERS.</p>`}
     ${rs.activities.some(x => PICK.has(x.id) && x.assignee && [...WPICK].sort().join(";") !== (x.assigneeIds || []).map(String).sort().join(";")) ? `<div class="frm"><input type="text" maxlength="300" data-d="${dk("an", r.runId)}" value="${dv(dk("an", r.runId))}" placeholder="Reassignment note (required): why is this changing?" aria-label="Reassignment note"></div>` : ""}
     <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
 }
-function triage() {
-  const att = RI.filter(i => i.k === "attention").slice(0, 8), aw = runs().filter(r => r.acts && r.acts.awaiting > 0);
-  return `<h2>Wave</h2><p class="k">Tap a wave block or tray in the matrix to see its detail, clear its gates, set its first-leaf check and dispatch work.</p>
-    ${att.length ? `<h3>Needs attention</h3>${att.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b><br><span class="k">${esc(i.l)}</span></span><button class="alt sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("")}` : `<p class="k">No wave in the room needs attention on ${fmt(T)}.</p>`}
-    ${aw.length ? `<h3>Awaiting verification</h3>${aw.map(r => `<div class="g"><span class="n"><b>${esc(r.cropName)} · ${esc(r.runId)}</b><br><span class="k">${r.acts.awaiting} done, not verified</span></span><button class="alt sm" type="button" data-sel="${esc(r.runId)}|${r.waves[0].wave}">Open</button></div>`).join("")}` : ""}`;
+const visItems = () => RI.filter(i => (FILT === "all" || (FILT === "occupied" ? i.k === "occupied" || i.k === "ready" : FILT === i.k)) && (!CF || i.r.crop === CF)).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave);
+function wavesList() {   // every wave in the room for the current filter; tap Open to work on one
+  const l = visItems(), names = {all:"All", empty:"Available", occupied:"Occupied", attention:"Needs attention", post:"Post-transplant"};
+  const chips = ["all", "attention", "occupied"].map(v => `<button type="button" class="${FILT === v ? "on" : "alt"} sm" data-a="filt" data-f="${v}">${names[v]}</button>`).join("");
+  return `<h2>Waves · ${l.length}</h2><div class="row" style="margin-top:0">${chips}</div>
+    ${l.length ? l.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b> <span class="k">· ${i.w.trays} trays</span><br><span class="k">${esc(i.l)}</span></span><button class="${SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave ? "" : "alt"} sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("") : `<p class="k">No waves match this filter on ${fmt(T)}.</p>`}`;
 }
 function paneWave() {
   const r = SEL && runs().find(x => x.runId === SEL.runId), w = r && r.waves.find(x => x.wave === SEL.wave);
-  if (!w) return triage();
+  if (!w) return `<p class="k">No wave is open. Pick one from the list.</p><div class="row"><button type="button" data-a="tab" data-tab="waves">Go to Waves</button></div>`;
   const [k, l] = wst(r, w, T), rs = RS[r.runId];
   if (!rs && !LOADING[r.runId]) setTimeout(() => !RS[r.runId] && !LOADING[r.runId] && loadRun(r.runId), 0);
-  return `<div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · wave ${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
+  return `<div class="row" style="margin-top:0"><button class="alt sm" type="button" data-a="tab" data-tab="waves">‹ Waves</button></div>
+  <div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · W${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
   <div class="facts"><div><span class="k">Sow date</span><b>${fmt(w.sow)}</b></div><div><span class="k">Transplant (DOB)</span><b>${fmt(w.plant)}</b><span class="k">${days(T, w.plant) >= 0 ? "in " + days(T, w.plant) + " d" : -days(T, w.plant) + " d ago"}</span></div>
   <div><span class="k">Trays</span><b>${w.trays || "None (direct)"}${r.trayCells ? " · " + r.trayCells + "-cell" : ""}</b></div><div><span class="k">Material</span><b>${w.material ? w.material.toLocaleString() : "Bulk"}</b></div>
   <div><span class="k">Propagation</span><b>${esc(r.propLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(r.location)}${r.bed ? " · bed " + esc(r.bed) : ""}</b></div>
@@ -397,7 +523,7 @@ function paneWave() {
   ${canAct() ? "" : `<div class="note" style="margin:10px 0">View only. ${MODE === "live" ? "Turn on Manager mode to act." : "Go live and turn on Manager mode to act."}</div>`}
   ${w.init ? "" : `<div class="row"><button type="button" data-a="init">Initiate this wave</button><span class="k">Adds every activity for the run so work can be dispatched.</span></div>`}
   ${(w.phases || []).length ? `<details><summary>Propagation phases</summary><table><tr><th>Phase</th><th>Days</th><th>Starts</th><th>Ends</th></tr>${w.phases.map(p => `<tr ${p.start <= T && T < p.end ? 'style="font-weight:700"' : ""}><td>${esc(p.phase)}</td><td>${p.days}</td><td>${fmt(p.start)}</td><td>${fmt(p.end)}</td></tr>`).join("")}</table></details>` : ""}
-  ${gatesCard(r, w, rs)}${leafCard(r, w, rs)}${dispatch(r, w, rs)}`;
+  ${progCard(r, w)}${gatesCard(r, w, rs)}${leafCard(r, w, rs)}${dispatch(r, w, rs)}`;
 }
 
 /* ---------- crew pane ---------- */
@@ -437,7 +563,10 @@ function paneWatch() {
     ${done.length ? `<details><summary>Recently resolved (${done.length})</summary>${done.map(a => `<div class="k" style="padding:4px 0">${when(a.resolved_at)} · ${esc(a.worker_name)} · ${esc(a.activity_name)} · ${esc(a.reason)}${a.stall_min !== "" ? " · " + esc(a.stall_min) + " min" : ""}</div>`).join("")}</details>` : ""}`;
 }
 /* ---------- review pane: reassigned + unverified ---------- */
-function openBtn(runId) { const r = D.runs.find(x => x.runId === runId); return r && r.waves && r.waves.length ? `<button type="button" class="alt sm" data-sel="${esc(runId)}|${r.waves[0].wave}">Open</button>` : ""; }
+function openBtn(runId, wave) {   // opens the wave that actually holds the work to verify; wave 1 only when none is given
+  const r = D.runs.find(x => x.runId === runId); if (!r || !r.waves || !r.waves.length) return "";
+  const w = (r.waves.find(x => x.wave === Number(wave)) || r.waves[0]).wave;
+  return `<button type="button" class="alt sm" data-sel="${esc(runId)}|${w}">Open${wave ? " wave " + w : ""}</button>`; }
 function paneReview() {
   const ra = (D.assignLog || []).filter(isMove), un = D.unverified || [], dn = un.filter(x => x.done), op = un.filter(x => !x.done);
   const chip = (a, v, cur, l, n) => `<button type="button" class="${cur === v ? "on" : "alt"}" data-a="${a}" data-v="${v}">${l} · ${n}</button>`;
@@ -445,10 +574,10 @@ function paneReview() {
     return `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activity_id)}</b> ${esc(f.name || "")}<br><span class="k">${esc(r ? r.cropName : "")} · ${esc(x.run_id)}</span></span>${openBtn(x.run_id)}</div>
       ${f.description ? `<div class="d k">${esc(f.description)}</div>` : ""}
       <div class="mv"><b>↔ ${esc(MOVEK[x.kind] || x.kind)}:</b> ${mvTxt({from:x.from_name, to:x.to_name, by:x.by, at:x.ts, note:x.note})}</div></div>`; };
-  const urow = x => `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activityId)}</b> ${esc(x.activity)}${x.scope !== "crop-wave" ? ' <span class="badge st-attention">gate</span>' : ""}<br><span class="k">${esc(x.crop)} · ${esc(x.runId)}</span></span>${openBtn(x.runId)}</div>
+  const urow = x => `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activityId)}</b> ${esc(x.activity)}${x.scope !== "crop-wave" ? ' <span class="badge st-attention">gate</span>' : ""}<br><span class="k">${esc(x.crop)} · ${esc(x.runId)}</span></span>${openBtn(x.runId, x.done ? (x.waves || [])[0] : 0)}</div>
       ${x.description ? `<div class="d k">${esc(x.description)}</div>` : ""}
-      <div class="d"><span class="badge ${x.done ? "wait" : "open"}">${x.done ? "! Done, awaiting verification" : "○ Assigned, not done"}</span>${x.team.length ? " · Team: " + esc(x.team.join(", ")) : ""}${x.due ? " · Due " + fmt(x.due) : ""}</div>
-      ${x.done ? `<div class="d k">Completed ${when(x.completedAt)}${x.completedBy ? " by " + esc(x.completedBy) : ""}. Open it to verify.</div>` : ""}</div>`;
+      <div class="d"><span class="badge ${x.done ? "wait" : "open"}">${x.done ? "! Submitted, awaiting verification" : "○ Assigned, not submitted"}</span>${x.team.length ? " · Team: " + esc(x.team.join(", ")) : ""}${x.due ? " · Due " + fmt(x.due) : ""}</div>
+      ${x.done ? `<div class="d k">${x.pending} worker portion${x.pending > 1 ? "s" : ""} to verify${(x.waves || []).length ? " (wave" + (x.waves.length > 1 ? "s " : " ") + x.waves.join(", ") + ")" : ""} · last submitted ${when(x.completedAt)}${x.completedBy ? " by " + esc(x.completedBy) : ""}. Press Open, then verify each worker's portion in the activity list.</div>` : ""}</div>`;
   const body = RV === "reassigned"
     ? (ra.length ? ra.slice(0, 80).map(rrow).join("") + (ra.length > 80 ? `<p class="k">Showing the latest 80. The full trail is in the Log tab.</p>` : "") : `<p class="k">No activity has been reassigned yet.</p>`)
     : `<div class="chips">${chip("ru", "done", RU, "Done, awaiting verification", dn.length)}${chip("ru", "open", RU, "Assigned, not done", op.length)}</div>${(RU === "done" ? dn : op).length ? (RU === "done" ? dn : op).map(urow).join("") : `<p class="k">${RU === "done" ? "Nothing is waiting for verification." : "Nothing assigned and open."}</p>`}`;
@@ -461,9 +590,9 @@ function paneLog() {
 }
 function side() {
   if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
-  const tabs = [["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
+  const tabs = [["waves", "Waves", ""], ["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
   $("tabs").innerHTML = tabs.map(([v, l, n]) => `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-a="tab" data-tab="${v}">${l}${n ? " (" + n + ")" : ""}</button>`).join("");
-  $("pane").innerHTML = TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
+  $("pane").innerHTML = TAB === "waves" ? wavesList() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
 }
 
 /* ---------- render ---------- */
@@ -484,12 +613,26 @@ async function doVerify(id) {
   const c = cur(); if (!c) return; const notes = (DRAFT[dk("n", c.r.runId, id)] || "").trim();
   const rs = await write("Verifying " + id, () => post({action:"verify", runId:c.r.runId, activityId:id, notes})); if (rs) delete DRAFT[dk("n", c.r.runId, id)]; done(rs, "Verified " + id);
 }
-async function doVerifyAll() {
-  const c = cur(); if (!c || !c.rs) return; const todo = c.rs.activities.filter(a => a.scope !== "crop-wave" && a.completed && !a.verified && !a.overridden);
-  if (!todo.length || !confirm(`Verify ${todo.length} completed gate step${todo.length > 1 ? "s" : ""} as ready?\n\n${todo.map(a => a.id + " " + a.name).join("\n")}\n\nThis is recorded under ${M.name}.`)) return;
+async function doVerifyWork(id, logId) {
+  const c = cur(); if (!c) return; const k = dk("n", c.r.runId, logId), notes = (DRAFT[k] || "").trim();
+  const rs = await write("Verifying " + id, () => post({action:"verifyWork", runId:c.r.runId, activityId:id, logId, notes})); if (rs) delete DRAFT[k]; done(rs, "Portion verified · " + id);
+}
+async function doVerifyPhase(phase) {   // every submitted, unverified worker portion of one phase on the open wave; each is recorded as its own verification
+  const c = cur(); if (!c || !c.rs || !c.w) return; const items = [];
+  c.rs.activities.filter(a => a.scope === "crop-wave" && !a.overridden && (a.phase || "Activities") === phase).forEach(a => { const p = (a.portions || []).find(x => x.wave === c.w.wave); if (p) p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); }); });
+  if (!items.length) return toast("Nothing submitted is waiting for verification on this wave.", true);
+  if (!confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""} for wave ${c.w.wave}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nEach is recorded separately under M.name.`)) return;
   let rs = null, n = 0;
-  for (const a of todo) { rs = await write(`Verifying ${a.id} (${n + 1} of ${todo.length})`, () => post({action:"verify", runId:c.r.runId, activityId:a.id, notes:"Bed verified ready"})); if (!rs) break; n++; applyRun(rs); }
-  done(rs, n + " gate step" + (n > 1 ? "s" : "") + " verified");
+  for (const i of items) { rs = await write(`Verifying ${i.a.id} · ${i.x.name} (${n + 1} of ${items.length})`, () => post({action:"verifyWork", runId:c.r.runId, activityId:i.a.id, logId:i.x.logId, notes:"Verified in phase review"})); if (!rs) break; n++; applyRun(rs); }
+  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
+}
+async function doVerifyAll() {   // gate steps only: every submitted worker portion on the pre-sowing and post-transplant gates
+  const c = cur(); if (!c || !c.rs) return; const items = [];
+  c.rs.activities.filter(a => a.scope !== "crop-wave" && !a.overridden).forEach(a => (a.portions || []).forEach(p => p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); })));
+  if (!items.length || !confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nThis is recorded under M.name.`)) return;
+  let rs = null, n = 0;
+  for (const i of items) { rs = await write(`Verifying ${i.a.id} · ${i.x.name} (${n + 1} of ${items.length})`, () => post({action:"verifyWork", runId:c.r.runId, activityId:i.a.id, logId:i.x.logId, notes:"Bed verified ready"})); if (!rs) break; n++; applyRun(rs); }
+  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
 }
 async function doClose(id) {
   const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("c", run, id)] || "").trim(), a = c.rs && c.rs.activities.find(x => x.id === id);
@@ -557,7 +700,8 @@ async function doResolve(id) {
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
   LAST = Date.now(); const b = e.target.closest("[data-a],[data-sel]"); if (!b) return; const d = b.dataset;
-  if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); if (window.innerWidth <= 980) $("side").scrollIntoView({behavior:"smooth", block:"start"}); return; }
+  if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); const rr = runs().find(x => x.runId === id); toast((rr ? rr.cropName : id) + " W" + w + " opened");
+    const sd = $("side"), bx = sd.getBoundingClientRect(); if (window.innerWidth <= 980 || bx.top < 0 || bx.top > innerHeight * .7) sd.scrollIntoView({behavior:"smooth", block:"start"}); return; }
   switch (d.a) {
     case "sync": FORCED ? goLive() : load(); break;
     case "switch": exitManager(); if (MODE === "live") openLogin(); else toast("Go live first, then sign in as the other manager.", true); break; case "offline": goOffline(); break; case "live": goLive(); break;
@@ -566,12 +710,13 @@ document.addEventListener("click", e => {
     case "theme": { const n = document.documentElement.dataset.theme === "night" ? "sun" : "night"; document.documentElement.dataset.theme = n; LS.set("pm_theme", n); header(); break; }
     case "tab": TAB = d.tab; if (d.rv) RV = d.rv; if (d.ru) RU = d.ru; side(); break;
     case "filt": FILT = d.f; render(true); break;
+    case "kpiatt": FILT = "attention"; TAB = "waves"; render(true); side(); break;
     case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
     case "crewv": CREW = d.v; side(); break;
-    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (d.m === "all" || (d.m === "un" && !a.assignee)) PICK.add(a.id); }); side(); } break; }
+    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (a.hold && !a.assignee) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
     case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
-    case "verify": if (gate()) doVerify(d.id); break; case "verifyall": if (gate()) doVerifyAll(); break;
+    case "dropw": if (gate()) doDropWorker(d.id, d.who); break; case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyphase": if (gate()) doVerifyPhase(d.p); break; case "verifyall": if (gate()) doVerifyAll(); break;
     case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;
     case "leaf": if (gate()) doLeaf(d.o); break; case "assign": if (gate()) doAssign(); break;
     case "init": if (gate()) doInit(); break; case "resolve": if (gate()) doResolve(d.id); break;

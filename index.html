@@ -337,7 +337,7 @@ async function doDropWorker(id, who) {   // takes a worker who did not do the ta
 function portNote(a) {   // each worker's own portion: working, submitted, verified
   if (a.overridden) return "";
   const P = a.portions || [], crop = a.scope === "crop-wave", S = a.sessions || [];
-  const lines = P.filter(p => !crop || !WV || p.wave === WV.wave).map(p => (crop ? "W" + p.wave + ": " : "") + p.workers.map(x => esc(x.name) + (x.verified ? " ✓ verified" : x.submitted ? " · submitted, awaiting verification" : S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · working" : x.required ? " · not submitted" : "")).join("; "));
+  const lines = P.filter(p => !crop || !WV || p.wave === WV.wave).map(p => (crop ? "W" + p.wave + ": " : "") + p.workers.map(x => esc(x.name) + (x.verified ? " ✓ verified" + (S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · ⚠ session still open" : "") : x.submitted ? " · submitted, awaiting verification" : S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · working" : x.required ? " · not submitted" : "")).join("; "));
   return lines.length ? `<div class="d k">${lines.join("<br>")}</div>` : S.length ? `<div class="d k">Working now: ${S.map(s => esc(s.by) + (crop ? " W" + s.wave : "")).join(", ")}</div>` : "";
 }
 function portBox(a, r) {   // manager audit: verify each worker's submitted portion on its own
@@ -366,7 +366,7 @@ function actLabel(a) {   // [css, text] one plain status word per activity
   const q = actKind(a), n = a.scope === "crop-wave" && WV ? " · W" + WV.wave : "";
   if (q.k === "done") return ["ok", "✓ Completed · verified" + n];
   if (q.k === "wait") return ["wait", "! Submitted · needs verification" + n];
-  if (q.k === "prog") return ["prog", "◐ In progress" + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.map(esc).join(", ") : "") + n];
+  if (q.k === "prog") return ["prog", ((a.sessions || []).some(s => !(a.scope === "crop-wave" && WV) || Number(s.wave) === WV.wave) ? "◐ Working now" : "◐ Partly done, nobody working now") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.map(esc).join(", ") : "") + n];
   return a.assignee ? ["open", "◔ Assigned"] : ["wait", "○ Not assigned"];
 }
 const UIOPEN = {};   // remembers which lists the manager expanded or collapsed across re-draws

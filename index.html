@@ -330,7 +330,7 @@ function portNote(a) {   // each worker's own portion: working, submitted, verif
   return lines.length ? `<div class="d k">${lines.join("<br>")}</div>` : S.length ? `<div class="d k">Working now: ${S.map(s => esc(s.by) + (crop ? " W" + s.wave : "")).join(", ")}</div>` : "";
 }
 function portBox(a, r) {   // manager audit: verify each worker's submitted portion on its own
-  const crop = a.scope === "crop-wave", P = (a.portions || []).filter(p => !crop || !WV || p.wave === WV.wave); if (!P.length) return "";
+  const crop = a.scope === "crop-wave", P = (a.portions || []).filter(p => !crop || !WV || p.wave === WV.wave); if (!P.length) { const o = crop ? (a.portions || []).filter(p => p.workers.some(x => x.submitted && !x.verified)).map(p => p.wave) : []; return o.length ? `<div class="d"><span class="badge wait">! Submitted on ${o.length > 1 ? "waves" : "wave"} ${o.join(", ")}, not on the wave you have open</span> ${o.slice(0, 5).map(n => `<button type="button" class="alt sm" data-sel="${esc(r.runId)}|${n}">Open wave ${n}</button>`).join(" ")}</div>` : ""; }
   const q = x => x.qty !== "" && x.qty != null ? " · " + esc(x.qty) + " " + esc(x.unit) : "";
   return `<div class="d"><b>Worker portions</b> <span class="k">each must be verified before the phase can advance</span>${P.map(p => `${crop ? `<div class="k">Wave ${p.wave}${p.cleared ? " · all verified" : ""}</div>` : ""}${p.workers.map(x => {
     if (x.verified) return `<div class="k">✓ ${esc(x.name)}${q(x)} · verified by ${esc(x.verifiedBy)}${x.notes ? " · " + esc(x.notes) : ""}</div>`;
@@ -378,6 +378,9 @@ function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the 
   if (held.length) { const need = rs.activities.filter(a => (held[0].holdIds || []).includes(a.id));
     return step(`Verify ${esc(held[0].hold)} before assigning ${esc(cp.p)}`, `Phase hold: ${need.map(a => esc(a.id + " " + a.name) + (a.pending ? " (" + a.pending + " submitted, to verify)" : " (not every worker has submitted)")).join(", ")}. Open each one under Dispatch, Manager actions, and verify every worker's portion.${lf}`); }
   if (cun.length) return step(`Required activities are cleared. Assign ${esc(cp.p)}`, `${cun.length} activit${cun.length > 1 ? "ies" : "y"} not assigned, starting with ${esc(cun[0].id + " " + cun[0].name)}.${lf}`, tick(cun, "Tick these and choose workers"));
+  const pw = a => { const p = (a.portions || []).find(x => x.wave === w.wave); return p ? p.workers.filter(x => x.submitted && !x.verified).length : 0; }, pn = cp.l.filter(a => pw(a) > 0);
+  if (pn.length) { const n = pn.reduce((s, a) => s + pw(a), 0);
+    return step(`Verify ${n} submitted worker portion${n > 1 ? "s" : ""} in ${esc(cp.p)}`, `${pn.map(a => esc(a.id + " " + a.name) + " (" + pw(a) + ")").join(", ")}. Check each worker's work, add notes if needed, and press Verify beside their name in the list below. The next phase stays on hold until every portion is verified.${lf}`, `<button type="button" data-a="verifyphase" data-p="${esc(cp.p)}">Verify all submitted on wave ${w.wave}…</button>`); }
   return step(`Wait for ${esc(cp.p)}`, `All activities in this phase are assigned (${cp.l.filter(a => a.sessions && a.sessions.length).length} in progress, ${cp.l.filter(isDone).length} of ${cp.l.length} completed).${lf}`);
 }
 function progCard(r, w) {
@@ -390,7 +393,7 @@ function progCard(r, w) {
   const ready = pre.every(gateOk), left = pre.filter(a => !gateOk(a)).length, key = (...p) => r.runId + "|" + p.join("|");
   const op = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
   const row = (a, tag) => { const [c, t] = actLabel(a), dn = isDone(a);
-    return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}${portNote(a)}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>`; };
+    return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}${portNote(a)}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>${(() => { const b = a.pending && !a.overridden ? portBox(a, r) : ""; return b ? `<li class="al-row" style="display:block">${b}</li>` : ""; })()}`; };
   const cnt = l => `${doneN(l)} of ${l.length} completed${progN(l) ? ", " + progN(l) + " in progress" : ""}`;
   const reqDone = gates.length && gates.every(isDone), kg = key("req");
   const req = !gates.length ? "" : `<details class="grp ${reqDone ? "dim" : ""}" data-ok="${esc(kg)}" ${op(kg, !reqDone)}><summary>${reqDone ? "✓ " : ""}Required activities · ${cnt(gates)}</summary><ul class="al-list">${gates.map(a => row(a, a.scope === "post-transplant" ? "after transplant" : "before sowing")).join("")}</ul></details>`;
@@ -398,7 +401,7 @@ function progCard(r, w) {
   const cp = phs.find(g => g.l.some(a => !isDone(a)));
   const nx = !next.length ? "" : `<h3 style="margin:12px 0 4px">Next activities · ${cnt(next)}</h3>` + phs.map(g => { const fin = g.l.every(isDone), cur = g === cp, k = key("ph", g.p);
     const tag = fin ? "completed" : cur ? "up next" : "later";
-    return `<details class="grp ${fin ? "dim" : ""} ${cur ? "cur" : ""}" data-ok="${esc(k)}" ${op(k, cur && ready)}><summary>${fin ? "✓ " : cur ? "▶ " : ""}${esc(g.p)} · ${cnt(g.l)} <span class="k">(${tag})</span></summary><ul class="al-list">${g.l.map(a => row(a, a.locked ? "locked until required activities are cleared" : "")).join("")}</ul></details>`; }).join("");
+    return `<details class="grp ${fin ? "dim" : ""} ${cur ? "cur" : ""}" data-ok="${esc(k)}" ${op(k, (cur && ready) || g.l.some(a => a.pending > 0))}><summary>${fin ? "✓ " : cur ? "▶ " : ""}${esc(g.p)} · ${cnt(g.l)} <span class="k">(${tag})</span></summary><ul class="al-list">${g.l.map(a => row(a, a.locked ? "locked until required activities are cleared" : "")).join("")}</ul></details>`; }).join("");
   return `<section class="blk pc"><h3 style="margin:0 0 6px">Activities · run ${esc(r.runId)}</h3>
     ${pre.length ? `<div class="light ${ready ? "go" : "stop"}"><i></i><span>${ready ? "Ready to sow" : "Not ready to sow"}<small>${ready ? "All required activities before sowing are cleared." : left + " required activit" + (left > 1 ? "ies" : "y") + " still to clear before sowing."}</small></span></div>` : ""}
     ${nextStep(r, w, rs, gates, next)}${req}${nx}
@@ -482,7 +485,7 @@ function dispatch(r, w, rs) {
   const a = PICK.size, n = WPICK.size;
   return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; a short note is required and the change is kept in its trail (from, to, by, note).</p>
     <div class="row"><button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button><button class="alt sm" type="button" data-a="pickall" data-m="all">Tick all</button><button class="alt sm" type="button" data-a="pickall" data-m="none">Clear</button></div>
-    ${ph.map(([p, l], i) => `<details ${l.some(x => !x.assignee && !x.completed) ? "open" : ""}><summary>${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned</summary>${l.map(row).join("")}</details>`).join("")}
+    ${ph.map(([p, l], i) => `<details ${l.some(x => !x.assignee && !x.completed) || l.some(x => x.pending > 0) ? "open" : ""}><summary>${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned</summary>${l.map(row).join("")}</details>`).join("")}
     <h3 id="wlist">Workers</h3>${D.workers.length ? `<div class="team">${D.workers.map(x => { const e = crew.get(String(x.id)); return `<label><input type="checkbox" data-wk="${esc(x.id)}" ${WPICK.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${e && e.st !== "IDLE" ? " · " + WS[e.st].toLowerCase() + (e.tasks.length ? ", " + e.tasks.length + " open" : "") : ""}</span></span></label>`; }).join("")}</div>` : `<p class="k">No active workers in USERS.</p>`}
     ${rs.activities.some(x => PICK.has(x.id) && x.assignee && [...WPICK].sort().join(";") !== (x.assigneeIds || []).map(String).sort().join(";")) ? `<div class="frm"><input type="text" maxlength="300" data-d="${dk("an", r.runId)}" value="${dv(dk("an", r.runId))}" placeholder="Reassignment note (required): why is this changing?" aria-label="Reassignment note"></div>` : ""}
     <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
@@ -548,7 +551,10 @@ function paneWatch() {
     ${done.length ? `<details><summary>Recently resolved (${done.length})</summary>${done.map(a => `<div class="k" style="padding:4px 0">${when(a.resolved_at)} · ${esc(a.worker_name)} · ${esc(a.activity_name)} · ${esc(a.reason)}${a.stall_min !== "" ? " · " + esc(a.stall_min) + " min" : ""}</div>`).join("")}</details>` : ""}`;
 }
 /* ---------- review pane: reassigned + unverified ---------- */
-function openBtn(runId) { const r = D.runs.find(x => x.runId === runId); return r && r.waves && r.waves.length ? `<button type="button" class="alt sm" data-sel="${esc(runId)}|${r.waves[0].wave}">Open</button>` : ""; }
+function openBtn(runId, wave) {   // opens the wave that actually holds the work to verify; wave 1 only when none is given
+  const r = D.runs.find(x => x.runId === runId); if (!r || !r.waves || !r.waves.length) return "";
+  const w = (r.waves.find(x => x.wave === Number(wave)) || r.waves[0]).wave;
+  return `<button type="button" class="alt sm" data-sel="${esc(runId)}|${w}">Open${wave ? " wave " + w : ""}</button>`; }
 function paneReview() {
   const ra = (D.assignLog || []).filter(isMove), un = D.unverified || [], dn = un.filter(x => x.done), op = un.filter(x => !x.done);
   const chip = (a, v, cur, l, n) => `<button type="button" class="${cur === v ? "on" : "alt"}" data-a="${a}" data-v="${v}">${l} · ${n}</button>`;
@@ -556,10 +562,10 @@ function paneReview() {
     return `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activity_id)}</b> ${esc(f.name || "")}<br><span class="k">${esc(r ? r.cropName : "")} · ${esc(x.run_id)}</span></span>${openBtn(x.run_id)}</div>
       ${f.description ? `<div class="d k">${esc(f.description)}</div>` : ""}
       <div class="mv"><b>↔ ${esc(MOVEK[x.kind] || x.kind)}:</b> ${mvTxt({from:x.from_name, to:x.to_name, by:x.by, at:x.ts, note:x.note})}</div></div>`; };
-  const urow = x => `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activityId)}</b> ${esc(x.activity)}${x.scope !== "crop-wave" ? ' <span class="badge st-attention">gate</span>' : ""}<br><span class="k">${esc(x.crop)} · ${esc(x.runId)}</span></span>${openBtn(x.runId)}</div>
+  const urow = x => `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activityId)}</b> ${esc(x.activity)}${x.scope !== "crop-wave" ? ' <span class="badge st-attention">gate</span>' : ""}<br><span class="k">${esc(x.crop)} · ${esc(x.runId)}</span></span>${openBtn(x.runId, x.done ? (x.waves || [])[0] : 0)}</div>
       ${x.description ? `<div class="d k">${esc(x.description)}</div>` : ""}
-      <div class="d"><span class="badge ${x.done ? "wait" : "open"}">${x.done ? "! Done, awaiting verification" : "○ Assigned, not done"}</span>${x.team.length ? " · Team: " + esc(x.team.join(", ")) : ""}${x.due ? " · Due " + fmt(x.due) : ""}</div>
-      ${x.done ? `<div class="d k">Completed ${when(x.completedAt)}${x.completedBy ? " by " + esc(x.completedBy) : ""}. Open it to verify.</div>` : ""}</div>`;
+      <div class="d"><span class="badge ${x.done ? "wait" : "open"}">${x.done ? "! Submitted, awaiting verification" : "○ Assigned, not submitted"}</span>${x.team.length ? " · Team: " + esc(x.team.join(", ")) : ""}${x.due ? " · Due " + fmt(x.due) : ""}</div>
+      ${x.done ? `<div class="d k">${x.pending} worker portion${x.pending > 1 ? "s" : ""} to verify${(x.waves || []).length ? " (wave" + (x.waves.length > 1 ? "s " : " ") + x.waves.join(", ") + ")" : ""} · last submitted ${when(x.completedAt)}${x.completedBy ? " by " + esc(x.completedBy) : ""}. Press Open, then verify each worker's portion in the activity list.</div>` : ""}</div>`;
   const body = RV === "reassigned"
     ? (ra.length ? ra.slice(0, 80).map(rrow).join("") + (ra.length > 80 ? `<p class="k">Showing the latest 80. The full trail is in the Log tab.</p>` : "") : `<p class="k">No activity has been reassigned yet.</p>`)
     : `<div class="chips">${chip("ru", "done", RU, "Done, awaiting verification", dn.length)}${chip("ru", "open", RU, "Assigned, not done", op.length)}</div>${(RU === "done" ? dn : op).length ? (RU === "done" ? dn : op).map(urow).join("") : `<p class="k">${RU === "done" ? "Nothing is waiting for verification." : "Nothing assigned and open."}</p>`}`;
@@ -598,6 +604,15 @@ async function doVerify(id) {
 async function doVerifyWork(id, logId) {
   const c = cur(); if (!c) return; const k = dk("n", c.r.runId, logId), notes = (DRAFT[k] || "").trim();
   const rs = await write("Verifying " + id, () => post({action:"verifyWork", runId:c.r.runId, activityId:id, logId, notes})); if (rs) delete DRAFT[k]; done(rs, "Portion verified · " + id);
+}
+async function doVerifyPhase(phase) {   // every submitted, unverified worker portion of one phase on the open wave; each is recorded as its own verification
+  const c = cur(); if (!c || !c.rs || !c.w) return; const items = [];
+  c.rs.activities.filter(a => a.scope === "crop-wave" && !a.overridden && (a.phase || "Activities") === phase).forEach(a => { const p = (a.portions || []).find(x => x.wave === c.w.wave); if (p) p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); }); });
+  if (!items.length) return toast("Nothing submitted is waiting for verification on this wave.", true);
+  if (!confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""} for wave ${c.w.wave}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nEach is recorded separately under M.name.`)) return;
+  let rs = null, n = 0;
+  for (const i of items) { rs = await write(`Verifying ${i.a.id} · ${i.x.name} (${n + 1} of ${items.length})`, () => post({action:"verifyWork", runId:c.r.runId, activityId:i.a.id, logId:i.x.logId, notes:"Verified in phase review"})); if (!rs) break; n++; applyRun(rs); }
+  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
 }
 async function doVerifyAll() {   // gate steps only: every submitted worker portion on the pre-sowing and post-transplant gates
   const c = cur(); if (!c || !c.rs) return; const items = [];
@@ -689,7 +704,7 @@ document.addEventListener("click", e => {
     case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (a.hold && !a.assignee) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
     case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
-    case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyall": if (gate()) doVerifyAll(); break;
+    case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyphase": if (gate()) doVerifyPhase(d.p); break; case "verifyall": if (gate()) doVerifyAll(); break;
     case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;
     case "leaf": if (gate()) doLeaf(d.o); break; case "assign": if (gate()) doAssign(); break;
     case "init": if (gate()) doInit(); break; case "resolve": if (gate()) doResolve(d.id); break;

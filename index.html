@@ -359,7 +359,7 @@ function progBadge(r) {
   const p = prog(r); if (!p) return "";
   if (!p.total) return `<span class="badge open">○ No activities yet</span>`;
   const all = p.dn === p.total;
-  return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
+  return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} working or partly done · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
 }
 function actLabel(a) {   // [css, text] one plain status word per activity
   if (a.overridden) return ["ok", "✓ Completed (overridden)"];
@@ -406,7 +406,8 @@ function progCard(r, w) {
   const op = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
   const row = (a, tag) => { const [c, t] = actLabel(a), dn = isDone(a);
     return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}${portNote(a)}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>${(() => { const b = (a.pending || (!isDone(a) && waitingOn(a).length && a.portions && a.portions.length)) && !a.overridden ? portBox(a, r) : ""; return b ? `<li class="al-row" style="display:block">${b}</li>` : ""; })()}`; };
-  const cnt = l => `${doneN(l)} of ${l.length} completed${progN(l) ? ", " + progN(l) + " in progress" : ""}`;
+  const liveN = l => l.filter(a => actLabel(a)[0] === "prog" && (a.sessions || []).length).length;
+  const cnt = l => { const lv = liveN(l), pt = progN(l) - lv; return `${doneN(l)} of ${l.length} completed${lv ? ", " + lv + " working now" : ""}${pt ? ", " + pt + " partly done" : ""}`; };
   const reqDone = gates.length && gates.every(isDone), kg = key("req");
   const req = !gates.length ? "" : `<details class="grp ${reqDone ? "dim" : ""}" data-ok="${esc(kg)}" ${op(kg, !reqDone)}><summary>${reqDone ? "✓ " : ""}Required activities · ${cnt(gates)}</summary><ul class="al-list">${gates.map(a => row(a, a.scope === "post-transplant" ? "after transplant" : "before sowing")).join("")}</ul></details>`;
   const phs = []; next.slice().sort((x, y) => x.id < y.id ? -1 : 1).forEach(a => { const p = a.phase || "Activities"; let g = phs.find(x => x.p === p); if (!g) phs.push(g = {p, l:[]}); g.l.push(a); });

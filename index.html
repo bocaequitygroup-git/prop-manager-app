@@ -361,7 +361,9 @@ function progBadge(r) {
   const all = p.dn === p.total;
   return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
 }
-function actLabel(a) {   // [css, text] one plain status word per activity
+const othW = a => { if (a.scope !== "crop-wave" || !WV) return ""; const o = (a.sessions || []).filter(s => Number(s.wave) !== WV.wave); return o.length ? " · also working now on other waves: " + o.map(s => esc(s.by) + " W" + s.wave).join(", ") : ""; };
+function actLabel(a) { const r = actLabel0(a), o = othW(a); return o ? [r[0], r[1] + o] : r; }
+function actLabel0(a) {   // [css, text] one plain status word per activity
   if (a.overridden) return ["ok", "✓ Completed (overridden)"];
   const q = actKind(a), n = a.scope === "crop-wave" && WV ? " · W" + WV.wave : "";
   if (q.k === "done") return ["ok", "✓ Completed · verified" + n];
@@ -380,7 +382,7 @@ function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the 
   if (pend.length) return step(`Verify ${pend.length} completed step${pend.length > 1 ? "s" : ""}`, `Workers finished ${pend.map(a => esc(a.id + " " + a.name)).join(", ")}. Check the bench, then press Verify.`, `<button type="button" data-a="verifyall">Verify bed ready (${pend.length})</button>`);
   if (un.length) return step(`Assign ${un.length} required activit${un.length > 1 ? "ies" : "y"}`, `${un.map(a => esc(a.id + " " + a.name)).join(", ")} must be done before sowing. Tick them, tick the workers, press Assign.`, tick(un, "Tick these and choose workers"));
   const wait = pre.filter(a => !gateOk(a));
-  if (wait.length) return step("Wait for the workers", `${wait.length} required activit${wait.length > 1 ? "ies are" : "y is"} with workers (${wait.filter(a => a.sessions && a.sessions.length).length} in progress). Nothing to do here until they finish.`);
+  if (wait.length) return step("Wait for the workers", `${wait.length} required activit${wait.length > 1 ? "ies are" : "y is"} with workers (${wait.filter(a => actLabel(a)[0] === "prog").length} in progress). Nothing to do here until they finish.`);
   const lf = !r.direct && !leafOk(w) && leafDue(w, T) ? ` The first-leaf check for wave ${w.wave} is also due: set it under First-leaf check.` : "";
   const phs = []; next.slice().sort((x, y) => x.id < y.id ? -1 : 1).forEach(a => { const p = a.phase || "Activities"; let g = phs.find(x => x.p === p); if (!g) phs.push(g = {p, l:[]}); g.l.push(a); });
   const cp = phs.find(g => g.l.some(a => !isDone(a)));
@@ -393,7 +395,7 @@ function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the 
   const pw = a => { const p = (a.portions || []).find(x => x.wave === w.wave); return p ? p.workers.filter(x => x.submitted && !x.verified).length : 0; }, pn = cp.l.filter(a => pw(a) > 0);
   if (pn.length) { const n = pn.reduce((s, a) => s + pw(a), 0);
     return step(`Verify ${n} submitted worker portion${n > 1 ? "s" : ""} in ${esc(cp.p)}`, `${pn.map(a => esc(a.id + " " + a.name) + " (" + pw(a) + ")").join(", ")}. Check each worker's work, add notes if needed, and press Verify beside their name in the list below. The next phase stays on hold until every portion is verified.${lf}`, `<button type="button" data-a="verifyphase" data-p="${esc(cp.p)}">Verify all submitted on wave ${w.wave}…</button>`); }
-  return step(`Wait for ${esc(cp.p)}`, `All activities in this phase are assigned (${cp.l.filter(a => a.sessions && a.sessions.length).length} in progress, ${cp.l.filter(isDone).length} of ${cp.l.length} completed).${lf}`);
+  return step(`Wait for ${esc(cp.p)}`, `All activities in this phase are assigned (${cp.l.filter(a => actLabel(a)[0] === "prog").length} in progress, ${cp.l.filter(isDone).length} of ${cp.l.length} completed).${lf}`);
 }
 function progCard(r, w) {
   WV = w; const rs = RS[r.runId];

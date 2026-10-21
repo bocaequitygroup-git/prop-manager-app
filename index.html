@@ -310,9 +310,33 @@ function matrix() {
 }
 
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
-const statusOf = a => a.overridden ? "Overridden" : a.verified ? "Verified" : a.completed ? "Done, awaiting verification" : a.sessions && a.sessions.length ? "In progress" : a.assignee ? "Assigned" : "Not assigned";
+const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? "In progress" + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" : "") : a.assignee ? "Assigned" : "Not assigned"; };
 /* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
-const bucket = a => (a.completed || a.overridden) ? "dn" : (a.sessions && a.sessions.length) ? "ip" : a.assignee ? "as" : "un";   // mutually exclusive stages
+let WV = null;   // wave the open panel shows: activities are shared by the run, but each worker's portion is submitted and verified per wave
+function actKind(a, w) {   // {k: done | wait | prog | as | un, sub, tot}: done = every assigned worker's portion verified by the manager
+  const S = a.sessions || [], P = a.portions || [], wv = w || WV, crop = a.scope === "crop-wave";
+  if (a.overridden) return {k: "done"};
+  const p = crop ? (wv ? P.find(x => x.wave === wv.wave) : null) : (P.find(x => x.cleared) || P[0]);
+  if (p) { const rq = p.workers.filter(x => x.required), L = rq.length ? rq : p.workers, sub = L.filter(x => x.submitted).length, tot = L.length;
+    if (p.cleared) return {k: "done", sub, tot}; if (tot && sub >= tot) return {k: "wait", sub, tot}; return {k: "prog", sub, tot}; }
+  if (!P.length && a.completed) return {k: a.verified ? "done" : "wait"};   // closed directly by a manager
+  if (S.some(s => !crop || !wv || Number(s.wave) === wv.wave)) return {k: "prog", sub: 0, tot: (a.assignees || []).length};
+  return {k: a.assignee ? "as" : "un"};
+}
+const bucket = a => (a.cleared || a.overridden) ? "dn" : ((a.sessions && a.sessions.length) || (a.portions && a.portions.length)) ? "ip" : a.assignee ? "as" : "un";   // mutually exclusive stages
+function portNote(a) {   // each worker's own portion: working, submitted, verified
+  const P = a.portions || [], crop = a.scope === "crop-wave", S = a.sessions || [];
+  const lines = P.filter(p => !crop || !WV || p.wave === WV.wave).map(p => (crop ? "W" + p.wave + ": " : "") + p.workers.map(x => esc(x.name) + (x.verified ? " ✓ verified" : x.submitted ? " · submitted, awaiting verification" : S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · working" : x.required ? " · not submitted" : "")).join("; "));
+  return lines.length ? `<div class="d k">${lines.join("<br>")}</div>` : S.length ? `<div class="d k">Working now: ${S.map(s => esc(s.by) + (crop ? " W" + s.wave : "")).join(", ")}</div>` : "";
+}
+function portBox(a, r) {   // manager audit: verify each worker's submitted portion on its own
+  const crop = a.scope === "crop-wave", P = (a.portions || []).filter(p => !crop || !WV || p.wave === WV.wave); if (!P.length) return "";
+  const q = x => x.qty !== "" && x.qty != null ? " · " + esc(x.qty) + " " + esc(x.unit) : "";
+  return `<div class="d"><b>Worker portions</b> <span class="k">each must be verified before the phase can advance</span>${P.map(p => `${crop ? `<div class="k">Wave ${p.wave}${p.cleared ? " · all verified" : ""}</div>` : ""}${p.workers.map(x => {
+    if (x.verified) return `<div class="k">✓ ${esc(x.name)}${q(x)} · verified by ${esc(x.verifiedBy)}${x.notes ? " · " + esc(x.notes) : ""}</div>`;
+    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
+    return `<div class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : x.required ? "not submitted yet" : "no submission"}</div>`; }).join("")}`).join("")}</div>`;
+}
 function tally(list) { const p = {total:list.length, un:0, as:0, ip:0, dn:0, wait:0}; list.forEach(a => { p[bucket(a)]++; if (a.completed && !a.verified && !a.overridden && a.scope !== "crop-wave") p.wait++; }); return p; }
 function prog(r) {   // {total, un, as, ip, dn}: fresh from the run detail when loaded, else from the monitor snapshot
   const rs = RS[r.runId];
@@ -326,20 +350,19 @@ function progBadge(r) {
   return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
 }
 function actLabel(a) {   // [css, text] one plain status word per activity
-  const gate = a.scope !== "crop-wave";
   if (a.overridden) return ["ok", "✓ Completed (overridden)"];
-  if (a.completed && (a.verified || !gate)) return ["ok", "✓ Completed"];
-  if (a.completed) return ["wait", "✓ Completed · needs verification"];
-  if (a.sessions && a.sessions.length) return ["prog", "◐ In progress"];
-  if (a.assignee) return ["open", "◔ Assigned"];
-  return ["wait", "○ Not assigned"];
+  const q = actKind(a), n = a.scope === "crop-wave" && WV ? " · W" + WV.wave : "";
+  if (q.k === "done") return ["ok", "✓ Completed · verified" + n];
+  if (q.k === "wait") return ["wait", "! Submitted · needs verification" + n];
+  if (q.k === "prog") return ["prog", "◐ In progress" + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" : "") + n];
+  return a.assignee ? ["open", "◔ Assigned"] : ["wait", "○ Not assigned"];
 }
 const UIOPEN = {};   // remembers which lists the manager expanded or collapsed across re-draws
 document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.ok; if (k) UIOPEN[k] = e.target.open; }, true);
-const isDone = a => !!(a.completed || a.overridden);
+const isDone = a => actKind(a).k === "done";
 function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the manager does now
   const step = (t, x, btn) => `<div class="nxt"><span class="nx-k">What to do next</span><b class="nx-t">${t}</b><span class="nx-x">${x}</span>${btn || ""}</div>`;
-  const pre = gates.filter(a => a.scope === "pre-sowing"), pend = gates.filter(a => a.completed && !a.verified && !a.overridden && a.scope === "pre-sowing");
+  const pre = gates.filter(a => a.scope === "pre-sowing"), pend = gates.filter(a => a.pending > 0 && !a.overridden && a.scope === "pre-sowing");
   const un = pre.filter(a => !isDone(a) && !a.assignee), ids = l => l.map(a => a.id).join(",");
   const tick = (l, label) => `<button type="button" data-a="pickall" data-m="ids" data-ids="${esc(ids(l))}">${label}</button>`;
   if (pend.length) return step(`Verify ${pend.length} completed step${pend.length > 1 ? "s" : ""}`, `Workers finished ${pend.map(a => esc(a.id + " " + a.name)).join(", ")}. Check the bench, then press Verify.`, `<button type="button" data-a="verifyall">Verify bed ready (${pend.length})</button>`);
@@ -351,11 +374,14 @@ function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the 
   const cp = phs.find(g => g.l.some(a => !isDone(a)));
   if (!cp) return step("Everything is complete", "All required and next activities for this run are done.");
   const cun = cp.l.filter(a => !isDone(a) && !a.assignee);
+  const held = cun.filter(a => a.hold);
+  if (held.length) { const need = rs.activities.filter(a => (held[0].holdIds || []).includes(a.id));
+    return step(`Verify ${esc(held[0].hold)} before assigning ${esc(cp.p)}`, `Phase hold: ${need.map(a => esc(a.id + " " + a.name) + (a.pending ? " (" + a.pending + " submitted, to verify)" : " (not every worker has submitted)")).join(", ")}. Open each one under Dispatch, Manager actions, and verify every worker's portion.${lf}`); }
   if (cun.length) return step(`Required activities are cleared. Assign ${esc(cp.p)}`, `${cun.length} activit${cun.length > 1 ? "ies" : "y"} not assigned, starting with ${esc(cun[0].id + " " + cun[0].name)}.${lf}`, tick(cun, "Tick these and choose workers"));
   return step(`Wait for ${esc(cp.p)}`, `All activities in this phase are assigned (${cp.l.filter(a => a.sessions && a.sessions.length).length} in progress, ${cp.l.filter(isDone).length} of ${cp.l.length} completed).${lf}`);
 }
 function progCard(r, w) {
-  const rs = RS[r.runId];
+  WV = w; const rs = RS[r.runId];
   if (!rs || !rs.activities) return `<section class="blk"><h3>Activities</h3><p class="k">Loading activities…</p></section>`;
   const all = rs.activities;
   if (!all.length) return `<section class="blk"><h3>Activities</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
@@ -364,7 +390,7 @@ function progCard(r, w) {
   const ready = pre.every(gateOk), left = pre.filter(a => !gateOk(a)).length, key = (...p) => r.runId + "|" + p.join("|");
   const op = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
   const row = (a, tag) => { const [c, t] = actLabel(a), dn = isDone(a);
-    return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>`; };
+    return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}${portNote(a)}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>`; };
   const cnt = l => `${doneN(l)} of ${l.length} completed${progN(l) ? ", " + progN(l) + " in progress" : ""}`;
   const reqDone = gates.length && gates.every(isDone), kg = key("req");
   const req = !gates.length ? "" : `<details class="grp ${reqDone ? "dim" : ""}" data-ok="${esc(kg)}" ${op(kg, !reqDone)}><summary>${reqDone ? "✓ " : ""}Required activities · ${cnt(gates)}</summary><ul class="al-list">${gates.map(a => row(a, a.scope === "post-transplant" ? "after transplant" : "before sowing")).join("")}</ul></details>`;
@@ -382,7 +408,8 @@ const dk = (...p) => p.join("|");
 const dv = k => esc(DRAFT[k] || "");
 function ctls(a, r, w, gateCard) {   // manager controls for one activity
   const run = r.runId, id = a.id, gate = a.scope !== "crop-wave", c = [];
-  if (a.completed && !a.verified && !a.overridden) c.push(`<div class="frm"><input type="text" data-d="${dk("n", run, id)}" value="${dv(dk("n", run, id))}" placeholder="Verification notes (optional)" aria-label="Verification notes for ${esc(id)}"><button type="button" class="sm" data-a="verify" data-id="${esc(id)}">Verify</button></div>`);
+  if (!a.overridden) c.push(portBox(a, r));
+  if (a.completed && !a.verified && !a.overridden && !(a.portions || []).length) c.push(`<div class="frm"><input type="text" data-d="${dk("n", run, id)}" value="${dv(dk("n", run, id))}" placeholder="Verification notes (optional)" aria-label="Verification notes for ${esc(id)}"><button type="button" class="sm" data-a="verify" data-id="${esc(id)}">Verify</button></div>`);
   if (!a.completed) c.push(`<details ${gateCard ? "" : ""}><summary>Direct close</summary><p class="k">Marks it done without a worker session. The reason is logged.</p><div class="frm"><input type="text" data-d="${dk("c", run, id)}" value="${dv(dk("c", run, id))}" placeholder="Reason (required)" aria-label="Reason for closing ${esc(id)}">
     ${a.requiresCount ? `<input type="number" min="0" step="any" data-d="${dk("cc", run, id)}" value="${dv(dk("cc", run, id))}" placeholder="Qty" aria-label="Quantity"><input class="u" type="text" data-d="${dk("cu", run, id)}" value="${dv(dk("cu", run, id))}" placeholder="Unit" aria-label="Unit">` : ""}
     <button type="button" class="alt sm" data-a="close" data-id="${esc(id)}">Close it</button></div></details>`);
@@ -411,14 +438,15 @@ function gateRow(a, r, w) {
   if (a.completed) bits.push(`Completed ${when(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
   if (a.verified) bits.push(`Verified ${when(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
   if (a.overridden) bits.push(`<b>Overridden</b> by ${esc(a.overrideBy || "manager")}: ${esc(a.overrideReason)}`);
-  return `<div class="act"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}</span><span class="badge ${ok ? "ok" : a.completed ? "wait" : "open"}">${ok ? "✓" : a.completed ? "!" : "○"} ${esc(statusOf(a))}</span></div>
+  return `<div class="act"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}</span><span class="badge ${ok ? "ok" : actKind(a).k === "wait" ? "wait" : "open"}">${ok ? "✓" : actKind(a).k === "wait" ? "!" : "○"} ${esc(statusOf(a))}</span></div>
     ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}${a.assignee ? `<div class="d">Team: ${esc(String(a.assignee).replace(/;\s*/g, ", "))}</div>` : ""}${moveLine(a)}${bits.length ? `<div class="d">${bits.join("<br>")}</div>` : ""}${reassignBox(a, r)}<div style="margin-left:0">${ctls(a, r, w, true)}</div></div>`;
 }
 function gatesCard(r, w, rs) {
+  WV = w;
   if (r.direct && !(r.gates || []).length) return `<section class="blk"><h3>Stage gates</h3><p class="k">None: this crop is direct-seeded or a crown, so it skips the nursery.</p></section>`;
   const list = rs ? rs.activities.filter(a => a.scope !== "crop-wave") : (r.gates || []);
   const pre = list.filter(a => a.scope === "pre-sowing"), post = list.filter(a => a.scope === "post-transplant"), okN = x => x.filter(gateOk).length;
-  const pend = list.filter(a => a.completed && !a.verified && !a.overridden).length;
+  const pend = list.reduce((n, a) => n + (a.overridden ? 0 : a.pending || 0), 0);
   const grp = (t, x) => x.length ? `<h3>${t} · ${okN(x)} of ${x.length} cleared</h3>${x.map(a => gateRow(a, r, w)).join("")}` : "";
   return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">Stage gates</h3><span class="sp"></span>${pend ? `<button type="button" data-a="verifyall">Verify bed ready (${pend} done)</button>` : ""}</div>
     <p class="k">Pre-sowing steps must be done and verified, or overridden with a reason, before any later activity can start. Run ${esc(r.runId)}: ${(r.acts && r.acts.gatesOk) != null ? r.acts.gatesOk + " of " + r.acts.gates : "?"} cleared.</p>
@@ -437,19 +465,20 @@ function leafCard(r, w, rs) {
     ${o === "PASS" || o === "OVERRIDDEN" ? "" : `<details><summary>Override first-leaf check</summary><div class="frm"><input type="text" data-d="${kk}" value="${dv(kk)}" placeholder="Reason (required)" aria-label="Override reason"><button type="button" class="dng sm" data-a="leaf" data-o="OVERRIDDEN">Override</button></div></details>`}</section>`;
 }
 function dispatch(r, w, rs) {
+  WV = w;
   if (!rs) return `<section class="blk"><h3>Dispatch</h3><p class="k">Loading activities…</p></section>`;
   if (!rs.activities.length) return `<section class="blk"><h3>Dispatch</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
   const by = {}; rs.activities.forEach(a => (by[a.phase || "Required gate activities"] = by[a.phase || "Required gate activities"] || []).push(a)); const ph = Object.entries(by);
   const crew = new Map(crewData().map(e => [e.id, e]));
   const row = a => {
     const gate = a.scope !== "crop-wave", fb = a.feed && !r.direct && !leafOk(w), tr = a.history || [];
-    return `<div class="act"><label><input type="checkbox" data-pick="${esc(a.id)}" ${PICK.has(a.id) ? "checked" : ""} aria-label="Select ${esc(a.name)}"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge st-attention">gate</span>' : ""}</span><span class="k">${esc(statusOf(a))}${a.assignee ? " · " + esc(String(a.assignee).replace(/;\s*/g, ", ")) : ""}</span></label>
+    return `<div class="act"><label><input type="checkbox" data-pick="${esc(a.id)}" ${PICK.has(a.id) ? "checked" : ""} ${a.hold && !a.assignee ? "disabled" : ""} aria-label="Select ${esc(a.name)}"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge st-attention">gate</span>' : ""}</span><span class="k">${esc(statusOf(a))}${a.assignee ? " · " + esc(String(a.assignee).replace(/;\s*/g, ", ")) : ""}</span></label>
       ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}
-      ${a.locked ? `<div class="d"><span class="badge wait">! Locked until the stage gates are cleared</span></div>` : ""}${fb ? `<div class="d"><span class="badge bad">✕ Blocked: first-leaf check for wave ${w.wave} is not Pass</span></div>` : ""}
-      ${a.sessions && a.sessions.length ? `<div class="d">Working now: ${a.sessions.map(s => esc(s.by) + " (wave " + s.wave + ")").join(", ")}</div>` : ""}
+      ${a.locked ? `<div class="d"><span class="badge wait">! Locked until the stage gates are cleared</span></div>` : ""}${a.hold && !a.assignee ? `<div class="d"><span class="badge bad">✕ Phase hold: verify ${esc(a.hold)} (${esc((a.holdIds || []).join(", "))}) worker portions before assigning this</span></div>` : ""}${fb ? `<div class="d"><span class="badge bad">✕ Blocked: first-leaf check for wave ${w.wave} is not Pass</span></div>` : ""}
+      ${portNote(a)}
       ${moveLine(a)}${reassignBox(a, r)}
       ${tr.length ? `<details><summary>Trail (${tr.length})</summary>${tr.slice().reverse().map(h => `<div class="k">${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}</div>`).join("")}</details>` : ""}
-      ${a.scope === "crop-wave" ? `<details><summary>Manager actions</summary>${ctls(a, r, w, false) || `<p class="k">Nothing to do.</p>`}</details>` : ""}</div>`; };
+      ${a.scope === "crop-wave" ? `<details ${a.pending ? "open" : ""}><summary>Manager actions${a.pending ? " · " + a.pending + " to verify" : ""}</summary>${ctls(a, r, w, false) || `<p class="k">Nothing to do.</p>`}</details>` : ""}</div>`; };
   const a = PICK.size, n = WPICK.size;
   return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; a short note is required and the change is kept in its trail (from, to, by, note).</p>
     <div class="row"><button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button><button class="alt sm" type="button" data-a="pickall" data-m="all">Tick all</button><button class="alt sm" type="button" data-a="pickall" data-m="none">Clear</button></div>
@@ -566,12 +595,17 @@ async function doVerify(id) {
   const c = cur(); if (!c) return; const notes = (DRAFT[dk("n", c.r.runId, id)] || "").trim();
   const rs = await write("Verifying " + id, () => post({action:"verify", runId:c.r.runId, activityId:id, notes})); if (rs) delete DRAFT[dk("n", c.r.runId, id)]; done(rs, "Verified " + id);
 }
-async function doVerifyAll() {
-  const c = cur(); if (!c || !c.rs) return; const todo = c.rs.activities.filter(a => a.scope !== "crop-wave" && a.completed && !a.verified && !a.overridden);
-  if (!todo.length || !confirm(`Verify ${todo.length} completed gate step${todo.length > 1 ? "s" : ""} as ready?\n\n${todo.map(a => a.id + " " + a.name).join("\n")}\n\nThis is recorded under ${M.name}.`)) return;
+async function doVerifyWork(id, logId) {
+  const c = cur(); if (!c) return; const k = dk("n", c.r.runId, logId), notes = (DRAFT[k] || "").trim();
+  const rs = await write("Verifying " + id, () => post({action:"verifyWork", runId:c.r.runId, activityId:id, logId, notes})); if (rs) delete DRAFT[k]; done(rs, "Portion verified · " + id);
+}
+async function doVerifyAll() {   // gate steps only: every submitted worker portion on the pre-sowing and post-transplant gates
+  const c = cur(); if (!c || !c.rs) return; const items = [];
+  c.rs.activities.filter(a => a.scope !== "crop-wave" && !a.overridden).forEach(a => (a.portions || []).forEach(p => p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); })));
+  if (!items.length || !confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nThis is recorded under M.name.`)) return;
   let rs = null, n = 0;
-  for (const a of todo) { rs = await write(`Verifying ${a.id} (${n + 1} of ${todo.length})`, () => post({action:"verify", runId:c.r.runId, activityId:a.id, notes:"Bed verified ready"})); if (!rs) break; n++; applyRun(rs); }
-  done(rs, n + " gate step" + (n > 1 ? "s" : "") + " verified");
+  for (const i of items) { rs = await write(`Verifying ${i.a.id} · ${i.x.name} (${n + 1} of ${items.length})`, () => post({action:"verifyWork", runId:c.r.runId, activityId:i.a.id, logId:i.x.logId, notes:"Bed verified ready"})); if (!rs) break; n++; applyRun(rs); }
+  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
 }
 async function doClose(id) {
   const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("c", run, id)] || "").trim(), a = c.rs && c.rs.activities.find(x => x.id === id);
@@ -652,10 +686,10 @@ document.addEventListener("click", e => {
     case "kpiatt": FILT = "attention"; TAB = "waves"; render(true); side(); break;
     case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
     case "crewv": CREW = d.v; side(); break;
-    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
+    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (a.hold && !a.assignee) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
     case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
-    case "verify": if (gate()) doVerify(d.id); break; case "verifyall": if (gate()) doVerifyAll(); break;
+    case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyall": if (gate()) doVerifyAll(); break;
     case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;
     case "leaf": if (gate()) doLeaf(d.o); break; case "assign": if (gate()) doAssign(); break;
     case "init": if (gate()) doInit(); break; case "resolve": if (gate()) doResolve(d.id); break;

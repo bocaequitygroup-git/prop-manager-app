@@ -652,22 +652,24 @@ async function doRvVerify(list) {
   }
   done(rs, n + " portion" + (n === 1 ? "" : "s") + " verified" + (sk ? " (" + sk + " already done or skipped)" : ""));
 }
-async function doVerifyPhase(phase) {   // every submitted, unverified worker portion of one phase on the open wave; each is recorded as its own verification
+async function verifyBatch(items, notes) {   // ONE server call for all portions of the open run (was one call per portion: slow, and it stopped part-way)
+  const c = cur(); if (!c || !c.rs || !items.length) return null;
+  const r = await write(`Verifying ${items.length} portion${items.length > 1 ? "s" : ""}… one moment`, () => post({action:"verifyWorkMany", runId:c.r.runId, notes, items: items.map(i => ({activityId:i.a.id, logId:i.x.logId}))}));
+  if (r) applyRun(r); return r;
+}
+function verifiedMsg(r) { const n = (r && r.verified) || 0, sk = r && r.skipped ? r.skipped.length : 0; return n + " portion" + (n === 1 ? "" : "s") + " verified" + (sk ? " (" + sk + " already done or skipped)" : ""); }
+async function doVerifyPhase(phase) {   // every submitted, unverified worker portion of one phase on the open wave; each is still recorded as its own verification
   const c = cur(); if (!c || !c.rs || !c.w) return; const items = [];
   c.rs.activities.filter(a => a.scope === "crop-wave" && !a.overridden && (a.phase || "Activities") === phase).forEach(a => { const p = (a.portions || []).find(x => x.wave === c.w.wave); if (p) p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); }); });
   if (!items.length) return toast("Nothing submitted is waiting for verification on this wave.", true);
-  if (!confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""} for wave ${c.w.wave}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nEach is recorded separately under M.name.`)) return;
-  let rs = null, n = 0;
-  for (const i of items) { rs = await write(`Verifying ${i.a.id} · ${i.x.name} (${n + 1} of ${items.length})`, () => post({action:"verifyWork", runId:c.r.runId, activityId:i.a.id, logId:i.x.logId, notes:"Verified in phase review"})); if (!rs) break; n++; applyRun(rs); }
-  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
+  if (!confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""} for wave ${c.w.wave}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nEach is recorded separately under ${M.name}.`)) return;
+  const rs = await verifyBatch(items, "Verified in phase review"); done(rs, verifiedMsg(rs));
 }
 async function doVerifyAll() {   // gate steps only: every submitted worker portion on the pre-sowing and post-transplant gates
   const c = cur(); if (!c || !c.rs) return; const items = [];
   c.rs.activities.filter(a => a.scope !== "crop-wave" && !a.overridden).forEach(a => (a.portions || []).forEach(p => p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); })));
-  if (!items.length || !confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nThis is recorded under M.name.`)) return;
-  let rs = null, n = 0;
-  for (const i of items) { rs = await write(`Verifying ${i.a.id} · ${i.x.name} (${n + 1} of ${items.length})`, () => post({action:"verifyWork", runId:c.r.runId, activityId:i.a.id, logId:i.x.logId, notes:"Bed verified ready"})); if (!rs) break; n++; applyRun(rs); }
-  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
+  if (!items.length || !confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nThis is recorded under ${M.name}.`)) return;
+  const rs = await verifyBatch(items, "Bed verified ready"); done(rs, verifiedMsg(rs));
 }
 async function doClose(id) {
   const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("c", run, id)] || "").trim(), a = c.rs && c.rs.activities.find(x => x.id === id);

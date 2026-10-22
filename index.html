@@ -96,7 +96,7 @@ body.out #login{background:var(--bg)}
 <aside class="card" id="side"><div id="tabs" role="tablist"></div><div id="pane"></div></aside>
 </div>
 <div id="login" class="hidden" role="dialog" aria-modal="true" aria-label="Sign in"><div class="card">
-<h2>Propagation Manager</h2><p class="k">Ranch propagation console for managers and founders. You are signed out after 15 minutes without use.</p>
+<h2>Propagation Manager</h2><p class="k">Ranch propagation console for managers and founders. You are signed out after 2 hours without use.</p>
 <label>Worker ID <span id="luw"></span></label>
 <label>PIN <input id="lp" type="password" inputmode="numeric" autocomplete="new-password" placeholder="PIN"></label>
 <div id="lerr" class="note bad hidden" role="alert" style="margin:0"></div>
@@ -105,7 +105,7 @@ body.out #login{background:var(--bg)}
 <script>
 "use strict";
 const API_URL = "https://script.google.com/macros/s/AKfycbz7qyhFT5BRUpiqLCnjtT8gRX-UQ-I0lQhF__H6dgCU_Rql2WFOMuNm-YLXazi0Zrir_g/exec"; // same Apps Script web app as the assignment board (ends in /exec)
-const POLL_MS = 60000, IDLE_MS = 15 * 60000, STALE_MIN = 30, BAY_SQFT = 800;
+const POLL_MS = 60000, IDLE_MS = 120 * 60000, STALE_MIN = 30, BAY_SQFT = 800;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = s => s ? new Date(String(s).slice(0, 10) + "T00:00:00").toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}) : "";
@@ -759,7 +759,7 @@ if (M) { const last = SS.get("pm_last"); if (last && Date.now() - last > IDLE_MS
 setInterval(() => { if (M) SS.set("pm_last", LAST); }, 10000);
 setInterval(tick, 15000);
 setInterval(() => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED)) load(true); }, POLL_MS);
-setInterval(() => { if (M && Date.now() - LAST > IDLE_MS) exitManager("Manager mode turned off after 15 minutes without use."); }, 30000);
+setInterval(() => { if (M && Date.now() - LAST > IDLE_MS) exitManager("Manager mode turned off after 2 hours without use."); }, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED) && Date.now() - Date.parse(SNAP || 0) > 30000) load(true); });
 window.addEventListener("online", () => { if (!FORCED) load(true); });
 if (M) { if (loadSnap()) MODE = "offline"; render(); load(true); }   // signed in on this tab: paint the last snapshot, then sync

@@ -262,7 +262,7 @@ const tSince = iso => `<b data-timer="since" data-since="${esc(iso)}">${hm(nowMs
 function tick() { const now = nowMs(); document.querySelectorAll("[data-timer]").forEach(el => { const d = el.dataset; el.textContent = d.timer === "net" ? hm(netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now)) : hm(now - Date.parse(d.since)); }); }
 function sessLine(s) {
   const stall = /stall/i.test(s.pauseReason);
-  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}${refOf(s.activityId).description ? `<br><span class="k">${esc(refOf(s.activityId).description)}</span>` : ""}</div>`;
+  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activityId)} ${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}${refOf(s.activityId).description ? `<br><span class="k">${esc(refOf(s.activityId).description)}</span>` : ""}</div>`;
 }
 
 /* ---------- header, KPIs ---------- */
@@ -310,7 +310,7 @@ function matrix() {
 }
 
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
-const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? "In progress" + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.join(", ") : "") : a.assignee ? "Assigned" : "Not assigned"; };
+const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? (q.waveOk ? "In progress · this wave verified, other waves not finished" : "In progress") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.join(", ") : "") : a.assignee ? "Assigned" : "Not assigned"; };
 /* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
 let WV = null;   // wave the open panel shows: activities are shared by the run, but each worker's portion is submitted and verified per wave
 function actKind(a, w) {   // {k: done | wait | prog | as | un, sub, tot}: done = every assigned worker's portion verified by the manager
@@ -318,7 +318,7 @@ function actKind(a, w) {   // {k: done | wait | prog | as | un, sub, tot}: done 
   if (a.overridden) return {k: "done"};
   const p = crop ? (wv ? P.find(x => x.wave === wv.wave) : null) : (P.find(x => x.cleared) || P[0]);
   if (p) { const rq = p.workers.filter(x => x.required), L = rq.length ? rq : p.workers, sub = L.filter(x => x.submitted).length, tot = L.length, ver = L.filter(x => x.verified).length, miss = L.filter(x => !x.submitted).map(x => x.name);
-    if (p.cleared) return {k: "done", sub, tot, ver, miss}; if (tot && sub >= tot) return {k: "wait", sub, tot, ver, miss}; return {k: "prog", sub, tot, ver, miss}; }
+    if (p.cleared) return crop && !a.cleared ? {k: "prog", sub, tot, ver, miss, waveOk: true} : {k: "done", sub, tot, ver, miss}; if (tot && sub >= tot) return {k: "wait", sub, tot, ver, miss}; return {k: "prog", sub, tot, ver, miss}; }
   if (!P.length && a.completed) return {k: a.verified ? "done" : "wait"};   // closed directly by a manager
   if (S.some(s => !crop || !wv || Number(s.wave) === wv.wave)) return {k: "prog", sub: 0, tot: (a.assignees || []).length};
   return {k: a.assignee ? "as" : "un"};
@@ -368,7 +368,7 @@ function actLabel0(a) {   // [css, text] one plain status word per activity
   const q = actKind(a), n = a.scope === "crop-wave" && WV ? " · W" + WV.wave : "";
   if (q.k === "done") return ["ok", "✓ Completed · verified" + n];
   if (q.k === "wait") return ["wait", "! Submitted · needs verification" + n];
-  if (q.k === "prog") return ["prog", ((a.sessions || []).some(s => !(a.scope === "crop-wave" && WV) || Number(s.wave) === WV.wave) ? "◐ Working now" : "◐ Partly done, nobody working now") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.map(esc).join(", ") : "") + n];
+  if (q.k === "prog") return ["prog", (q.waveOk ? "◐ In progress · this wave verified, other waves not finished" : (a.sessions || []).some(s => !(a.scope === "crop-wave" && WV) || Number(s.wave) === WV.wave) ? "◐ Working now" : "◐ Partly done, nobody working now") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.map(esc).join(", ") : "") + n];
   return a.assignee ? ["open", "◔ Assigned"] : ["wait", "○ Not assigned"];
 }
 const UIOPEN = {};   // remembers which lists the manager expanded or collapsed across re-draws
@@ -579,10 +579,12 @@ function paneReview() {
   const urow = x => `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activityId)}</b> ${esc(x.activity)}${x.scope !== "crop-wave" ? ' <span class="badge st-attention">gate</span>' : ""}<br><span class="k">${esc(x.crop)} · ${esc(x.runId)}</span></span>${openBtn(x.runId, x.done ? (x.waves || [])[0] : 0)}</div>
       ${x.description ? `<div class="d k">${esc(x.description)}</div>` : ""}
       <div class="d"><span class="badge ${x.done ? "wait" : "open"}">${x.done ? "! Submitted, awaiting verification" : "○ Assigned, not submitted"}</span>${x.team.length ? " · Team: " + esc(x.team.join(", ")) : ""}${x.due ? " · Due " + fmt(x.due) : ""}</div>
-      ${x.done ? `<div class="d k">${x.pending} worker portion${x.pending > 1 ? "s" : ""} to verify${(x.waves || []).length ? " (wave" + (x.waves.length > 1 ? "s " : " ") + x.waves.join(", ") + ")" : ""} · last submitted ${when(x.completedAt)}${x.completedBy ? " by " + esc(x.completedBy) : ""}. Press Open, then verify each worker's portion in the activity list.</div>` : ""}</div>`;
+      ${x.done ? `<div class="d k">${x.pending} worker portion${x.pending > 1 ? "s" : ""} to verify${(x.waves || []).length ? " (wave" + (x.waves.length > 1 ? "s " : " ") + x.waves.join(", ") + ")" : ""} · last submitted ${when(x.completedAt)}${x.completedBy ? " by " + esc(x.completedBy) : ""}. </div>
+        ${(x.items || []).map(i => `<div class="g" style="border:0;padding:3px 0"><span class="k">${esc(i.worker)} · W${esc(i.wave)}${i.qty !== "" && i.qty != null ? " · " + esc(i.qty) + " " + esc(i.unit || "") : ""} · ${when(i.at)}</span><button type="button" class="sm" data-a="rvone" data-run="${esc(x.runId)}" data-act="${esc(x.activityId)}" data-log="${esc(i.logId)}">Verify</button></div>`).join("")}
+        ${(x.items || []).length > 1 ? `<div style="margin-top:6px"><button type="button" class="alt sm" data-a="rvact" data-run="${esc(x.runId)}" data-act="${esc(x.activityId)}">Verify all ${x.items.length} for ${esc(x.activityId)}</button></div>` : ""}` : ""}</div>`;
   const body = RV === "reassigned"
     ? (ra.length ? ra.slice(0, 80).map(rrow).join("") + (ra.length > 80 ? `<p class="k">Showing the latest 80. The full trail is in the Log tab.</p>` : "") : `<p class="k">No activity has been reassigned yet.</p>`)
-    : `<div class="chips">${chip("ru", "done", RU, "Done, awaiting verification", dn.length)}${chip("ru", "open", RU, "Assigned, not done", op.length)}</div>${(RU === "done" ? dn : op).length ? (RU === "done" ? dn : op).map(urow).join("") : `<p class="k">${RU === "done" ? "Nothing is waiting for verification." : "Nothing assigned and open."}</p>`}`;
+    : `<div class="chips">${chip("ru", "done", RU, "Done, awaiting verification", dn.length)}${chip("ru", "open", RU, "Assigned, not done", op.length)}</div>${RU === "done" && dn.reduce((n, x) => n + (x.items || []).length, 0) > 1 ? `<div style="margin:8px 0"><button type="button" data-a="rvall">Verify all ${dn.reduce((n, x) => n + (x.items || []).length, 0)} submitted portions</button></div>` : ""}${(RU === "done" ? dn : op).length ? (RU === "done" ? dn : op).map(urow).join("") : `<p class="k">${RU === "done" ? "Nothing is waiting for verification." : "Nothing assigned and open."}</p>`}`;
   return `<h2>Review</h2><div class="chips">${chip("rv", "reassigned", RV, "Reassigned", ra.length)}${chip("rv", "unverified", RV, "Unverified", un.length)}</div>
     <p class="k">${RV === "reassigned" ? "Every reassignment, newest first: from who, to who, by who, with the note from the manager who made it." : "Activities not yet verified or overridden by a manager. Gate activities are marked."}</p>${body}`;
 }
@@ -618,6 +620,16 @@ async function doVerify(id) {
 async function doVerifyWork(id, logId) {
   const c = cur(); if (!c) return; const k = dk("n", c.r.runId, logId), notes = (DRAFT[k] || "").trim();
   const rs = await write("Verifying " + id, () => post({action:"verifyWork", runId:c.r.runId, activityId:id, logId, notes})); if (rs) delete DRAFT[k]; done(rs, "Portion verified · " + id);
+}
+function rvItems(run, act, log) {   // submitted, unverified worker portions from the Review list
+  const out = []; (D.unverified || []).forEach(x => { if ((run && x.runId !== run) || (act && x.activityId !== act)) return; (x.items || []).forEach(i => { if (!log || i.logId === log) out.push({run:x.runId, act:x.activityId, name:x.activity, log:i.logId, who:i.worker, wave:i.wave}); }); });
+  return out; }
+async function doRvVerify(list) {
+  if (!list.length) return toast("Nothing is waiting for verification.", true);
+  if (!confirm(`Verify ${list.length} submitted worker portion${list.length > 1 ? "s" : ""}?\n\n${list.map(i => i.act + " " + i.name + " · " + i.who + " · W" + i.wave).join("\n")}\n\nEach is recorded separately under ${M.name}.`)) return;
+  let rs = null, n = 0;
+  for (const i of list) { rs = await write(`Verifying ${i.act} · ${i.who} (${n + 1} of ${list.length})`, () => post({action:"verifyWork", runId:i.run, activityId:i.act, logId:i.log, notes:"Verified in review"})); if (!rs) break; n++; applyRun(rs); }
+  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
 }
 async function doVerifyPhase(phase) {   // every submitted, unverified worker portion of one phase on the open wave; each is recorded as its own verification
   const c = cur(); if (!c || !c.rs || !c.w) return; const items = [];
@@ -718,6 +730,7 @@ document.addEventListener("click", e => {
     case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (a.hold && !a.assignee) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
     case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
+    case "rvone": if (gate()) doRvVerify(rvItems(d.run, d.act, d.log)); break; case "rvact": if (gate()) doRvVerify(rvItems(d.run, d.act)); break; case "rvall": if (gate()) doRvVerify(rvItems()); break;
     case "dropw": if (gate()) doDropWorker(d.id, d.who); break; case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyphase": if (gate()) doVerifyPhase(d.p); break; case "verifyall": if (gate()) doVerifyAll(); break;
     case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;
     case "leaf": if (gate()) doLeaf(d.o); break; case "assign": if (gate()) doAssign(); break;

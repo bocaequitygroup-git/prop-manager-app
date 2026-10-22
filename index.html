@@ -627,9 +627,13 @@ function rvItems(run, act, log) {   // submitted, unverified worker portions fro
 async function doRvVerify(list) {
   if (!list.length) return toast("Nothing is waiting for verification.", true);
   if (!confirm(`Verify ${list.length} submitted worker portion${list.length > 1 ? "s" : ""}?\n\n${list.map(i => i.act + " " + i.name + " · " + i.who + " · W" + i.wave).join("\n")}\n\nEach is recorded separately under ${M.name}.`)) return;
-  let rs = null, n = 0;
-  for (const i of list) { rs = await write(`Verifying ${i.act} · ${i.who} (${n + 1} of ${list.length})`, () => post({action:"verifyWork", runId:i.run, activityId:i.act, logId:i.log, notes:"Verified in review"})); if (!rs) break; n++; applyRun(rs); }
-  done(rs, n + " portion" + (n > 1 ? "s" : "") + " verified");
+  let rs = null, n = 0, sk = 0;   // one server call per run (not one per portion): far faster, and safe to retry
+  for (const run of [...new Set(list.map(i => i.run))]) {
+    const items = list.filter(i => i.run === run);
+    const r = await write(`Verifying ${items.length} portion${items.length > 1 ? "s" : ""}`, () => post({action:"verifyWorkMany", runId:run, notes:"Verified in review", items: items.map(i => ({activityId:i.act, logId:i.log}))}));
+    if (!r) break; rs = r; n += r.verified || 0; sk += (r.skipped || []).length; applyRun(r);
+  }
+  done(rs, n + " portion" + (n === 1 ? "" : "s") + " verified" + (sk ? " (" + sk + " already done or skipped)" : ""));
 }
 async function doVerifyPhase(phase) {   // every submitted, unverified worker portion of one phase on the open wave; each is recorded as its own verification
   const c = cur(); if (!c || !c.rs || !c.w) return; const items = [];

@@ -149,7 +149,7 @@ const ST = {occupied:{l:"In propagation", g:"●"}, ready:{l:"Transplant soon", 
 const isMove = x => x.kind === "REASSIGN" || x.kind === "UNASSIGN" || (x.kind === "ASSIGN" && !!String(x.note || "").trim());
 const MOVEK = {REASSIGN:"Reassigned", UNASSIGN:"Removed", ASSIGN:"Added to team"};
 const WS = {IN_PROGRESS:"In progress", PAUSED:"Paused", ASSIGNED:"Assigned", IDLE:"Idle"};
-const KIND = {DIRECT_CLOSE:"Direct close", GATE_OVERRIDE:"Gate override", LEAF_OVERRIDE:"First-leaf override", ALERT_RESOLVED:"Alert resolved", ASSIGN:"Assigned", REASSIGN:"Reassigned", UNASSIGN:"Removed"};
+const KIND = {DIRECT_CLOSE:"Direct close", GATE_OVERRIDE:"Gate override", ACTIVITY_OVERRIDE:"Activity override", LEAF_OVERRIDE:"First-leaf override", ALERT_RESOLVED:"Alert resolved", ASSIGN:"Assigned", REASSIGN:"Reassigned", UNASSIGN:"Removed"};
 
 /* ---------- derived data ---------- */
 const runs = () => D ? D.runs.filter(r => !r.error) : [];
@@ -447,7 +447,7 @@ function ctls(a, r, w, gateCard) {   // manager controls for one activity
   if (!a.completed) c.push(`<details ${gateCard ? "" : ""}><summary>Direct close</summary><p class="k">Marks it done without a worker session. The reason is logged.</p><div class="frm"><input type="text" data-d="${dk("c", run, id)}" value="${dv(dk("c", run, id))}" placeholder="Reason (required)" aria-label="Reason for closing ${esc(id)}">
     ${a.requiresCount ? `<input type="number" min="0" step="any" data-d="${dk("cc", run, id)}" value="${dv(dk("cc", run, id))}" placeholder="Qty" aria-label="Quantity"><input class="u" type="text" data-d="${dk("cu", run, id)}" value="${dv(dk("cu", run, id))}" placeholder="Unit" aria-label="Unit">` : ""}
     <button type="button" class="alt sm" data-a="close" data-id="${esc(id)}">Close it</button></div></details>`);
-  if (gate && !a.verified && !a.overridden) c.push(`<details><summary>Override gate</summary><p class="k">Counts the gate as cleared without completing and verifying it. The reason is logged and cannot be undone here.</p><div class="frm"><input type="text" data-d="${dk("o", run, id)}" value="${dv(dk("o", run, id))}" placeholder="Reason (required)" aria-label="Override reason for ${esc(id)}"><button type="button" class="dng sm" data-a="override" data-id="${esc(id)}">Override</button></div></details>`);
+  if (!a.overridden && !a.cleared && !a.verified) c.push(`<details><summary>${gate ? "Override gate" : "Override activity"}</summary><p class="k">${gate ? "Counts the gate as cleared without completing and verifying it." : "Counts this activity as complete for every wave of the run without waiting for worker portions to be submitted and verified."} A written explanation is required. It is logged with your name and cannot be undone here.</p><div class="frm"><input type="text" maxlength="300" data-d="${dk("o", run, id)}" value="${dv(dk("o", run, id))}" placeholder="Explanation (required)" aria-label="Override explanation for ${esc(id)}"><button type="button" class="dng sm" data-a="override" data-id="${esc(id)}">Override</button></div></details>`);
   return c.join("");
 }
 const refOf = id => ((D && D.refs) || {})[id] || {};
@@ -681,9 +681,10 @@ async function doClose(id) {
   if (rs) ["c", "cc", "cu"].forEach(p => delete DRAFT[dk(p, run, id)]); done(rs, "Closed " + id);
 }
 async function doOverride(id) {
-  const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("o", run, id)] || "").trim();
-  if (!why) return toast("Type the reason for the override first. It is required and is logged.", true);
-  if (!confirm(`Override ${id} on run ${run}?\n\nThe gate counts as cleared without being completed and verified, so it stops blocking the run. Your reason is logged. The console cannot undo an override.`)) return;
+  const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("o", run, id)] || "").trim(), a = c.rs && c.rs.activities.find(x => x.id === id), gate = a ? a.scope !== "crop-wave" : true;
+  if (!why) return toast("Type the explanation for the override first. It is required and is logged.", true);
+  const open = a ? (a.sessions || []).length : 0, pend = a ? (a.pending || 0) : 0;
+  if (!confirm(`Override ${id}${a ? " " + a.name : ""} on run ${run}?\n\n` + (gate ? "The gate counts as cleared without being completed and verified, so it stops blocking the run." : "The activity counts as complete for every wave of this run. Workers can no longer start it.") + ` Your explanation is logged under ${M.name}. The board cannot undo an override.` + (pend ? `\n\n${pend} submitted worker portion${pend > 1 ? "s are" : " is"} not verified yet; they will stay in the ledger but no longer block anything.` : "") + (open ? `\n\n${open} worker session${open > 1 ? "s are" : " is"} still open and can still be closed.` : "") + `\n\nExplanation: ${why}`)) return;
   const rs = await write("Overriding " + id, () => post({action:"override", runId:run, activityId:id, reason:why})); if (rs) delete DRAFT[dk("o", run, id)]; done(rs, "Overridden " + id);
 }
 async function doLeaf(o) {

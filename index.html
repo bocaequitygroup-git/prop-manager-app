@@ -327,12 +327,23 @@ const bucket = a => (a.cleared || a.overridden) ? "dn" : ((a.sessions && a.sessi
 const waitingOn = a => { const crop = a.scope === "crop-wave", out = []; (a.portions || []).filter(p => !crop || !WV || p.wave === WV.wave).forEach(p => p.workers.forEach(x => { if (x.required && !x.submitted && !out.includes(x.name)) out.push(x.name); })); return out; };   // team members who have not submitted yet
 async function doDropWorker(id, who) {   // takes a worker who did not do the task off its team; everyone who submitted keeps their verified work
   const c = cur(); if (!c || !c.rs) return; const a = c.rs.activities.find(x => x.id === id); if (!a) return;
-  const keep = (a.assignees || []).filter(x => x.name !== who), nk = dk("dn", c.r.runId, id), note = (DRAFT[nk] || "").trim();
+  const keep = (a.assignees || []).filter(x => x.name !== who), nk = dk("dn", c.r.runId, id, who), note = (DRAFT[nk] || "").trim();
   if (!keep.length || keep.some(x => !x.id)) return toast("That would leave no valid team. Use Reassign to choose who does it.", true);
   if (!note) return toast("Write why " + who + " is coming off this task first. It is required and is kept in the trail.", true);
   if (!confirm(`Remove ${who} from ${id} ${a.name}?\n\nThis applies to every wave of run ${c.r.runId}. ${who} will no longer be accountable for it. Everyone who submitted keeps their verified work.\n\nNote: ${note}`)) return;
   const rs = await write("Removing " + who, () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:keep.map(x => x.id), note}));
   if (rs) delete DRAFT[nk]; done(rs, who + " removed from " + id);
+}
+async function doReassignWorker(id, who) {   // hands ONE worker's seat on an activity to another worker; everyone else on the team is untouched
+  const c = cur(); if (!c || !c.rs) return; const a = c.rs.activities.find(x => x.id === id); if (!a) return;
+  const sk = dk("rt", c.r.runId, id, who), nk = dk("dn", c.r.runId, id, who), to = D.workers.find(w => String(w.id) === String(DRAFT[sk] || "")), note = (DRAFT[nk] || "").trim();
+  const team = a.assignees || []; if (!team.length || team.some(x => !x.id)) return toast("This team has a name without a worker ID. Use the full Reassign editor instead.", true);
+  if (!to) return toast("Choose who takes over " + who + "'s portion first.", true);
+  if (!note) return toast("Write why " + who + " is coming off this task first. It is required and is kept in the trail.", true);
+  const busy = (a.sessions || []).some(s => s.by === who);
+  if (!confirm(`Reassign ${who}'s portion of ${id} ${a.name} to ${to.name}?\n\nThis applies to every wave of run ${c.r.runId}. Anyone who already submitted keeps their verified work.\nBy: ${M.name}\nNote: ${note}` + (busy ? `\n\n${who} is mid-session on this activity and can still close it.` : ""))) return;
+  const rs = await write("Reassigning " + who + " to " + to.name, () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:team.map(x => x.name === who ? String(to.id) : String(x.id)), note}));
+  if (rs) { delete DRAFT[sk]; delete DRAFT[nk]; } done(rs, who + " → " + to.name + " on " + id);
 }
 function portNote(a) {   // each worker's own portion: working, submitted, verified
   if (a.overridden) return "";
@@ -346,7 +357,13 @@ function portBox(a, r) {   // manager audit: verify each worker's submitted port
   return `<div class="d"><b>Worker portions</b> <span class="k">each must be verified before the phase can advance</span>${P.map(p => `${crop ? `<div class="k">Wave ${p.wave}${p.cleared ? " · all verified" : ""}</div>` : ""}${p.workers.map(x => {
     if (x.verified) return `<div class="k">✓ ${esc(x.name)}${q(x)} · verified by ${esc(x.verifiedBy)}${x.notes ? " · " + esc(x.notes) : ""}</div>`;
     if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
-    if (x.required && (a.assignees || []).length > 1 && a.scope === "crop-wave") return `<div class="frm"><span class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : "not submitted yet"}</span><input type="text" maxlength="300" data-d="${dk("dn", r.runId, a.id)}" value="${dv(dk("dn", r.runId, a.id))}" placeholder="Why is ${esc(x.name)} coming off this task? (required)" aria-label="Reason to remove ${esc(x.name)}"><button type="button" class="alt sm" data-a="dropw" data-id="${esc(a.id)}" data-who="${esc(x.name)}">Remove ${esc(x.name)} from task</button></div>`;
+    if (x.required && !x.submitted) { const team = a.assignees || [], multi = team.length > 1 && a.scope === "crop-wave", ids = team.map(t => String(t.id)), free = (D.workers || []).filter(w => !ids.includes(String(w.id)));
+      const nk = dk("dn", r.runId, a.id, x.name), sk = dk("rt", r.runId, a.id, x.name);
+      return `<div class="frm"><span class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : "not submitted yet"}</span>`
+        + `<select data-d="${esc(sk)}" aria-label="Reassign ${esc(x.name)} to"><option value="">Reassign ${esc(x.name)}'s portion to…</option>${free.map(w => `<option value="${esc(w.id)}" ${String(DRAFT[sk]) === String(w.id) ? "selected" : ""}>${esc(w.name)}</option>`).join("")}</select>`
+        + `<input type="text" maxlength="300" data-d="${esc(nk)}" value="${dv(nk)}" placeholder="Why is ${esc(x.name)} coming off this task? (required)" aria-label="Reason for ${esc(x.name)}">`
+        + `<button type="button" class="sm" data-a="reassignw" data-id="${esc(a.id)}" data-who="${esc(x.name)}">Reassign ${esc(x.name)}</button>`
+        + (multi ? ` <button type="button" class="alt sm" data-a="dropw" data-id="${esc(a.id)}" data-who="${esc(x.name)}">Remove ${esc(x.name)} from task</button>` : "") + `</div>`; }
     return `<div class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : x.required ? "not submitted yet" : "no submission"}</div>`; }).join("")}`).join("")}</div>`;
 }
 function tally(list) { const p = {total:list.length, un:0, as:0, ip:0, dn:0, wait:0}; list.forEach(a => { p[bucket(a)]++; if (a.completed && !a.verified && !a.overridden && a.scope !== "crop-wave") p.wait++; }); return p; }
@@ -735,7 +752,7 @@ document.addEventListener("click", e => {
     case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
     case "rvone": if (gate()) doRvVerify(rvItems(d.run, d.act, d.log)); break; case "rvact": if (gate()) doRvVerify(rvItems(d.run, d.act)); break; case "rvall": if (gate()) doRvVerify(rvItems()); break;
-    case "dropw": if (gate()) doDropWorker(d.id, d.who); break; case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyphase": if (gate()) doVerifyPhase(d.p); break; case "verifyall": if (gate()) doVerifyAll(); break;
+    case "dropw": if (gate()) doDropWorker(d.id, d.who); break; case "reassignw": if (gate()) doReassignWorker(d.id, d.who); break; case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyphase": if (gate()) doVerifyPhase(d.p); break; case "verifyall": if (gate()) doVerifyAll(); break;
     case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;
     case "leaf": if (gate()) doLeaf(d.o); break; case "assign": if (gate()) doAssign(); break;
     case "init": if (gate()) doInit(); break; case "resolve": if (gate()) doResolve(d.id); break;

@@ -60,6 +60,7 @@ header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 
 .light.go{background:var(--accs);border-color:var(--acc);color:var(--acc)}.light.go i{background:#1fb455;border-color:var(--acc);box-shadow:0 0 0 4px #bfe9cb}.light.stop{background:var(--warns);border-color:var(--warnb);color:var(--warn)}.light.stop i{background:#e27100;border-color:var(--warn)}
 .nxt{display:flex;flex-direction:column;gap:3px;border:3px solid var(--blue);background:var(--blues);color:var(--ink);border-radius:12px;padding:10px 14px;margin:8px 0}.nxt .nx-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}.nxt .nx-t{font-size:18px}.nxt .nx-x{font-size:14px}.nxt button{align-self:flex-start;margin-top:6px}
 .grp{border:2px solid var(--line);border-radius:10px;padding:2px 10px;margin:6px 0;background:var(--card)}.grp>summary{font-weight:700;padding:6px 0;cursor:pointer}.grp.cur{border-color:var(--blue)}.grp.dim{background:#e9ece9;border-color:#b5bdb7;color:#5d6a62}.grp.dim>summary{color:#5d6a62}.al-row.dim{color:#6b776f}.al-row.dim .al-n b{color:#6b776f}.badge.gry{background:#e1e5e2;border-color:#aab3ad;color:#55625a}
+.fin{background:#e9ece9;border-color:#b5bdb7;color:#5d6a62}.fin>summary{justify-content:space-between;gap:10px;color:#5d6a62}.fin .d{font-size:14px;margin:2px 0 4px;color:#5d6a62}
 .al-list{list-style:none;margin:0;padding:0}.al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.al-row:last-child{border-bottom:0}.al-n{display:flex;flex-direction:column}.al-w{font-size:13px}.badge.prog{background:var(--blue);color:#fff;border-color:var(--blue)}
 .blk{border:2px solid var(--edge);border-radius:12px;padding:10px 12px;margin:12px 0}.blk h3{margin-top:0}
 .g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}.g .n{flex:1;min-width:190px}
@@ -414,28 +415,37 @@ function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the 
     return step(`Verify ${n} submitted worker portion${n > 1 ? "s" : ""} in ${esc(cp.p)}`, `${pn.map(a => esc(a.id + " " + a.name) + " (" + pw(a) + ")").join(", ")}. Check each worker's work, add notes if needed, and press Verify beside their name in the list below. The next phase stays on hold until every portion is verified.${lf}`, `<button type="button" data-a="verifyphase" data-p="${esc(cp.p)}">Verify all submitted on wave ${w.wave}…</button>`); }
   return step(`Wait for ${esc(cp.p)}`, `All activities in this phase are assigned (${cp.l.filter(a => actLabel(a)[0] === "prog").length} in progress, ${cp.l.filter(isDone).length} of ${cp.l.length} completed).${lf}`);
 }
+const phNo = s => { const m = /Phase\s*(\d+)/i.exec(String(s || "")); return m ? +m[1] : 99; };
+const byPhase = (list, fb) => { const g = []; list.slice().sort((x, y) => phNo(x.phase) - phNo(y.phase) || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)).forEach(a => { const p = a.phase || fb; let o = g.find(x => x.p === p); if (!o) g.push(o = {p, l:[]}); o.l.push(a); }); return g; };   // phases in 1-6 order, activities in ID order
+const isFin = a => isDone(a) || (a.scope !== "crop-wave" && gateOk(a));   // completed and verified (or overridden): locked, read-only
+const openOf = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
+function finRow(a, r) {   // greyed, collapsed, read-only: no assign, verify, override or close controls
+  const gate = a.scope !== "crop-wave", k = r.runId + "|fin|" + a.id, tr = a.history || [], bits = [];
+  if (a.completed) bits.push(`Completed ${when(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
+  if (a.verified) bits.push(`Verified ${when(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
+  if (a.overridden) bits.push(`<b>Overridden</b> by ${esc(a.overrideBy || "manager")}: ${esc(a.overrideReason)}`);
+  return `<details class="fin" data-ok="${esc(k)}" ${openOf(k, false)}><summary><span><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge gry">gate</span>' : ""}</span><span class="badge gry">${a.overridden ? "✓ Completed (overridden)" : "✓ Completed · verified"}</span></summary>
+    ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}${a.assignee ? `<div class="d">Team: ${esc(String(a.assignee).replace(/;\s*/g, ", "))}</div>` : ""}${bits.length ? `<div class="d">${bits.join("<br>")}</div>` : ""}${portNote(a)}${moveLine(a)}${tr.length ? `<div class="d k">${tr.slice().reverse().map(h => `${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}`).join("<br>")}</div>` : ""}</details>`;
+}
 function progCard(r, w) {
   WV = w; const rs = RS[r.runId];
   if (!rs || !rs.activities) return `<section class="blk"><h3>Activities</h3><p class="k">Loading activities…</p></section>`;
   const all = rs.activities;
   if (!all.length) return `<section class="blk"><h3>Activities</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
   const gates = all.filter(a => a.scope !== "crop-wave"), pre = gates.filter(a => a.scope === "pre-sowing"), next = all.filter(a => a.scope === "crop-wave");
-  const doneN = l => l.filter(isDone).length, progN = l => l.filter(a => actLabel(a)[0] === "prog").length;
+  const doneN = l => l.filter(isFin).length, progN = l => l.filter(a => actLabel(a)[0] === "prog").length;
   const ready = pre.every(gateOk), left = pre.filter(a => !gateOk(a)).length, key = (...p) => r.runId + "|" + p.join("|");
   const op = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
-  const row = (a, tag) => { const [c, t] = actLabel(a), dn = isDone(a);
-    return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}${portNote(a)}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>${(() => { const b = (a.pending || (!isDone(a) && waitingOn(a).length && a.portions && a.portions.length)) && !a.overridden ? portBox(a, r) : ""; return b ? `<li class="al-row" style="display:block">${b}</li>` : ""; })()}`; };
+  const row = (a, tag) => { const [c, t] = actLabel(a), dn = isFin(a);
+    return `<li class="al-row ${dn ? "dim" : ""}"><span class="al-n"><b>${esc(a.id)}</b> ${esc(a.name)}${tag ? ` <span class="k">· ${tag}</span>` : ""}${a.assignee ? `<span class="k al-w">${esc(String(a.assignee).replace(/;\s*/g, ", "))}</span>` : ""}${portNote(a)}</span><span class="badge ${dn ? "gry" : c}">${t}</span></li>${(() => { const b = (a.pending || (!isFin(a) && waitingOn(a).length && a.portions && a.portions.length)) && !a.overridden ? portBox(a, r) : ""; return b ? `<li class="al-row" style="display:block">${b}</li>` : ""; })()}`; };
   const cnt = l => `${doneN(l)} of ${l.length} completed${progN(l) ? ", " + progN(l) + " in progress" : ""}`;
-  const reqDone = gates.length && gates.every(isDone), kg = key("req");
-  const req = !gates.length ? "" : `<details class="grp ${reqDone ? "dim" : ""}" data-ok="${esc(kg)}" ${op(kg, !reqDone)}><summary>${reqDone ? "✓ " : ""}Required activities · ${cnt(gates)}</summary><ul class="al-list">${gates.map(a => row(a, a.scope === "post-transplant" ? "after transplant" : "before sowing")).join("")}</ul></details>`;
-  const phs = []; next.slice().sort((x, y) => x.id < y.id ? -1 : 1).forEach(a => { const p = a.phase || "Activities"; let g = phs.find(x => x.p === p); if (!g) phs.push(g = {p, l:[]}); g.l.push(a); });
-  const cp = phs.find(g => g.l.some(a => !isDone(a)));
-  const nx = !next.length ? "" : `<h3 style="margin:12px 0 4px">Next activities · ${cnt(next)}</h3>` + phs.map(g => { const fin = g.l.every(isDone), cur = g === cp, k = key("ph", g.p);
+  const phs = byPhase(all, "Activities"), cp = phs.find(g => g.l.some(a => !isFin(a)));
+  const nx = `<h3 style="margin:12px 0 4px">Phases · ${cnt(all)}</h3>` + phs.map(g => { const fin = g.l.every(isFin), cur = g === cp, k = key("ph", g.p);
     const tag = fin ? "completed" : cur ? "up next" : "later";
-    return `<details class="grp ${fin ? "dim" : ""} ${cur ? "cur" : ""}" data-ok="${esc(k)}" ${op(k, (cur && ready) || g.l.some(a => a.pending > 0))}><summary>${fin ? "✓ " : cur ? "▶ " : ""}${esc(g.p)} · ${cnt(g.l)} <span class="k">(${tag})</span></summary><ul class="al-list">${g.l.map(a => row(a, a.locked ? "locked until required activities are cleared" : "")).join("")}</ul></details>`; }).join("");
+    return `<details class="grp ${fin ? "dim" : ""} ${cur ? "cur" : ""}" data-ok="${esc(k)}" ${op(k, !fin && (cur || g.l.some(a => a.pending > 0)))}><summary>${fin ? "✓ " : cur ? "▶ " : ""}${esc(g.p)} · ${cnt(g.l)} <span class="k">(${tag})</span></summary><ul class="al-list">${g.l.map(a => row(a, a.scope === "post-transplant" ? "gate · after transplant" : a.scope !== "crop-wave" ? "gate · before sowing" : a.locked ? "locked until required activities are cleared" : "")).join("")}</ul></details>`; }).join("");
   return `<section class="blk pc"><h3 style="margin:0 0 6px">Activities · run ${esc(r.runId)}</h3>
     ${pre.length ? `<div class="light ${ready ? "go" : "stop"}"><i></i><span>${ready ? "Ready to sow" : "Not ready to sow"}<small>${ready ? "All required activities before sowing are cleared." : left + " required activit" + (left > 1 ? "ies" : "y") + " still to clear before sowing."}</small></span></div>` : ""}
-    ${nextStep(r, w, rs, gates, next)}${req}${nx}
+    ${nextStep(r, w, rs, gates, next)}${nx}
     <p class="k" style="margin:8px 0 0;font-size:13px">Shared by all ${r.waves.length} wave${r.waves.length > 1 ? "s" : ""} of this run.</p></section>`;
 }
 const dk = (...p) => p.join("|");
@@ -481,10 +491,10 @@ function gatesCard(r, w, rs) {
   const list = rs ? rs.activities.filter(a => a.scope !== "crop-wave") : (r.gates || []);
   const pre = list.filter(a => a.scope === "pre-sowing"), post = list.filter(a => a.scope === "post-transplant"), okN = x => x.filter(gateOk).length;
   const pend = list.reduce((n, a) => n + (a.overridden ? 0 : a.pending || 0), 0);
-  const grp = (t, x) => x.length ? `<h3>${t} · ${okN(x)} of ${x.length} cleared</h3>${x.map(a => gateRow(a, r, w)).join("")}` : "";
+  const grp = (t, x, kk) => { if (!x.length) return ""; const all = x.every(gateOk), k = r.runId + "|gg|" + kk; return `<details class="grp ${all ? "dim" : ""}" data-ok="${esc(k)}" ${openOf(k, !all)}><summary>${all ? "✓ " : ""}${t} · ${okN(x)} of ${x.length} cleared</summary>${x.map(a => gateOk(a) ? finRow(a, r) : gateRow(a, r, w)).join("")}</details>`; };
   return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">Stage gates</h3><span class="sp"></span>${pend ? `<button type="button" data-a="verifyall">Verify bed ready (${pend} done)</button>` : ""}</div>
     <p class="k">Pre-sowing steps must be done and verified, or overridden with a reason, before any later activity can start. Run ${esc(r.runId)}: ${(r.acts && r.acts.gatesOk) != null ? r.acts.gatesOk + " of " + r.acts.gates : "?"} cleared.</p>
-    ${grp("Pre-sowing: bench ready for sowing", pre)}${grp("Post-transplant: bench sanitizing", post)}${!rs && !list.length ? `<p class="k">Loading…</p>` : ""}</section>`;
+    ${grp("Pre-sowing: bench ready for sowing", pre, "pre")}${grp("Post-transplant: bench sanitizing", post, "post")}${!rs && !list.length ? `<p class="k">Loading…</p>` : ""}</section>`;
 }
 function leafCard(r, w, rs) {
   if (r.direct) return `<section class="blk"><h3>First-leaf check</h3><p class="k">Not applicable: ${esc(r.cropName)} is direct-seeded or a crown.</p></section>`;
@@ -502,7 +512,7 @@ function dispatch(r, w, rs) {
   WV = w;
   if (!rs) return `<section class="blk"><h3>Dispatch</h3><p class="k">Loading activities…</p></section>`;
   if (!rs.activities.length) return `<section class="blk"><h3>Dispatch</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
-  const by = {}; rs.activities.forEach(a => (by[a.phase || "Required gate activities"] = by[a.phase || "Required gate activities"] || []).push(a)); const ph = Object.entries(by);
+  rs.activities.forEach(a => { if (isFin(a)) PICK.delete(a.id); }); const ph = byPhase(rs.activities, "Required gate activities").map(g => [g.p, g.l]);
   const crew = new Map(crewData().map(e => [e.id, e]));
   const row = a => {
     const gate = a.scope !== "crop-wave", fb = a.feed && !r.direct && !leafOk(w), tr = a.history || [];
@@ -516,7 +526,7 @@ function dispatch(r, w, rs) {
   const a = PICK.size, n = WPICK.size;
   return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; a short note is required and the change is kept in its trail (from, to, by, note).</p>
     <div class="row"><button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button><button class="alt sm" type="button" data-a="pickall" data-m="all">Tick all</button><button class="alt sm" type="button" data-a="pickall" data-m="none">Clear</button></div>
-    ${ph.map(([p, l], i) => `<details ${l.some(x => !x.assignee && !x.completed) || l.some(x => x.pending > 0) ? "open" : ""}><summary>${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned</summary>${l.map(row).join("")}</details>`).join("")}
+    ${ph.map(([p, l]) => { const k = r.runId + "|dp|" + p, fin = l.every(isFin), def = !fin && (l.some(x => !x.assignee && !x.completed) || l.some(x => x.pending > 0)); return `<details class="grp ${fin ? "dim" : ""}" data-ok="${esc(k)}" ${openOf(k, def)}><summary>${fin ? "✓ " : ""}${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned${fin ? " · completed" : ""}</summary>${l.map(a => isFin(a) ? finRow(a, r) : row(a)).join("")}</details>`; }).join("")}
     <h3 id="wlist">Workers</h3>${D.workers.length ? `<div class="team">${D.workers.map(x => { const e = crew.get(String(x.id)); return `<label><input type="checkbox" data-wk="${esc(x.id)}" ${WPICK.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${e && e.st !== "IDLE" ? " · " + WS[e.st].toLowerCase() + (e.tasks.length ? ", " + e.tasks.length + " open" : "") : ""}</span></span></label>`; }).join("")}</div>` : `<p class="k">No active workers in USERS.</p>`}
     ${rs.activities.some(x => PICK.has(x.id) && x.assignee && [...WPICK].sort().join(";") !== (x.assigneeIds || []).map(String).sort().join(";")) ? `<div class="frm"><input type="text" maxlength="300" data-d="${dk("an", r.runId)}" value="${dv(dk("an", r.runId))}" placeholder="Reassignment note (required): why is this changing?" aria-label="Reassignment note"></div>` : ""}
     <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
@@ -751,7 +761,7 @@ document.addEventListener("click", e => {
     case "kpiatt": FILT = "attention"; TAB = "waves"; render(true); side(); break;
     case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
     case "crewv": CREW = d.v; side(); break;
-    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (a.hold && !a.assignee) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
+    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (isFin(a) || (a.hold && !a.assignee)) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
     case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
     case "rvone": if (gate()) doRvVerify(rvItems(d.run, d.act, d.log)); break; case "rvact": if (gate()) doRvVerify(rvItems(d.run, d.act)); break; case "rvall": if (gate()) doRvVerify(rvItems()); break;

@@ -80,11 +80,20 @@ body.out #login{background:var(--bg)}
 .mv{border:2px solid var(--warnb);background:var(--warns);color:var(--warn);border-radius:10px;padding:6px 10px;margin:4px 0}
 .rg{margin:4px 0 4px 34px}.rg .team{margin:6px 0}.rg .arrow{font-weight:700;margin:4px 0}
 .rv .d{margin-left:0}
+
+#addact{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}
+#addact .card{width:min(440px,100%);display:grid;gap:10px;margin:0;max-height:92vh;overflow:auto;background:var(--card);color:var(--ink);border:2px solid var(--edge,var(--line));border-radius:14px;padding:16px}
+#addact h2{margin:0}#addact label{display:grid;gap:3px;font-weight:700}#addact label.chk{display:flex;gap:8px;align-items:center;font-weight:600}
+#addact input[type=text],#addact textarea,#addact select{width:100%;font:inherit;padding:8px 10px;border:2px solid var(--edge,var(--line));border-radius:10px;background:var(--card);color:var(--ink)}
+#addact textarea{resize:vertical;min-height:84px}#addact input[type=checkbox]{width:20px;height:20px}
+#addact .aae{background:var(--bads,var(--warns));color:var(--bad);border:2px solid var(--bad);border-radius:10px;padding:8px 10px;font-weight:700}
+#addact .arow{display:flex;gap:8px;flex-wrap:wrap}#addact details{display:grid;gap:8px}#addact summary{cursor:pointer;font-weight:700;min-height:32px}
 </style></head><body>
 <div id="top">
 <header>
 <h1>Propagation Manager</h1><span class="k">Ngapori Ranch · Bay 3</span><span class="sp"></span>
 <button class="alt sm" type="button" data-a="sync" id="bRef">Refresh</button>
+<button class="alt hidden" id="bAddAct" type="button" data-addact>+ Add activity</button>
 <button class="alt" id="bMgr" type="button" data-a="mgr">Manager mode: off</button>
 <button class="alt sm" id="bTheme" type="button" data-a="theme">Night</button>
 </header>
@@ -102,6 +111,18 @@ body.out #login{background:var(--bg)}
 <label>PIN <input id="lp" type="password" inputmode="numeric" autocomplete="new-password" placeholder="PIN"></label>
 <div id="lerr" class="note bad hidden" role="alert" style="margin:0"></div>
 <div class="row" style="margin:0"><button id="lgo" type="button" data-a="login">Sign in</button></div></div></div>
+<div id="addact" class="hidden" role="dialog" aria-modal="true" aria-labelledby="aat"><div class="card">
+<h2 id="aat">Add activity</h2>
+<label>Activity name <input id="aan" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Tray flipping"></label>
+<label>Description <textarea id="aad" maxlength="300" placeholder="What the worker does, in a sentence or two"></textarea></label>
+<p class="k" style="margin:0">The system fills in the ID, group, timing and scope, and adds it to every run.</p>
+<details><summary>More options (optional)</summary>
+<label>Group <select id="aap"><option value="">Automatic (Phase 7: Added activities)</option><option value="Phase 1: Pre-sowing and media preparation">Phase 1: Pre-sowing and media preparation</option><option value="Phase 2: Seeding and batching">Phase 2: Seeding and batching</option><option value="Phase 3: Germination and early emergence">Phase 3: Germination and early emergence</option><option value="Phase 4: Grow-out and crop maintenance">Phase 4: Grow-out and crop maintenance</option><option value="Phase 5: Hardening off and pre-delivery">Phase 5: Hardening off and pre-delivery</option><option value="Phase 6: Fulfillment and delivery">Phase 6: Fulfillment and delivery</option></select></label>
+<label class="chk"><input type="checkbox" id="aac"> Workers record a quantity when they finish</label>
+</details>
+<div id="aae" class="aae hidden" role="alert"></div>
+<div class="arow"><button id="aago" type="button">Add activity</button><button id="aax" type="button" class="alt">Cancel</button></div>
+</div></div>
 <div id="toast" class="hidden" role="status" aria-live="polite"></div>
 <script>
 "use strict";
@@ -268,7 +289,7 @@ function sessLine(s) {
 
 /* ---------- header, KPIs ---------- */
 function header() {
-  $("bMgr").textContent = M ? M.name + " · Sign out" : "Sign in"; $("bMgr").className = M ? "" : "alt"; document.body.classList.toggle("out", !M);
+  $("bMgr").textContent = M ? M.name + " · Sign out" : "Sign in"; $("bMgr").className = M ? "" : "alt"; document.body.classList.toggle("out", !M); $("bAddAct").classList.toggle("hidden", !canAct());
   $("bTheme").textContent = document.documentElement.dataset.theme === "night" ? "Sun" : "Night";
   document.documentElement.style.setProperty("--hh", $("top").offsetHeight + "px");
 }
@@ -746,6 +767,29 @@ async function doResolve(id) {
 }
 
 /* ---------- events ---------- */
+
+/* ---------- add activity (manager): the server assigns ID, group, timing, scope ---------- */
+function addActErr(m) { const el = $("aae"); el.textContent = m || ""; el.classList.toggle("hidden", !m); }
+function openAddAct() { $("aan").value = ""; $("aad").value = ""; $("aap").value = ""; $("aac").checked = false; addActErr(""); $("addact").classList.remove("hidden"); setTimeout(() => $("aan").focus(), 0); }
+function closeAddAct() { $("addact").classList.add("hidden"); }
+async function submitAddAct() {
+  const name = $("aan").value.trim().replace(/\s+/g, " "), description = $("aad").value.trim();
+  if (!name) { addActErr("Type the activity name."); $("aan").focus(); return; }
+  if (!description) { addActErr("Add a short description of the work."); $("aad").focus(); return; }
+  const go = $("aago"); go.disabled = true; addActErr("");
+  try {
+    const r = await post({action:"addActivity", name, description, phase:$("aap").value, requiresCount:$("aac").checked});
+    closeAddAct(); toast("Added " + r.activity.id + " · " + r.activity.name + (r.runsUpdated ? " to " + r.runsUpdated + " runs" : ""));
+    await ADDACT_REFRESH();
+  } catch (e) { addActErr(/Unknown action/i.test(e.message) ? "The server does not know this feature yet. Deploy the latest Code_pro.gs (with addActivity) as a new version." : e.message); }
+  finally { go.disabled = false; }
+}
+$("aago").onclick = submitAddAct; $("aax").onclick = closeAddAct;
+$("addact").addEventListener("click", e => { if (e.target === $("addact")) closeAddAct(); });
+$("aan").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("aad").focus(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("addact").classList.contains("hidden")) closeAddAct(); });
+document.addEventListener("click", e => { if (e.target.closest("[data-addact]")) openAddAct(); });
+const ADDACT_REFRESH = async () => { const id = SEL && SEL.runId; RS = {}; await load(true); if (id) await loadRun(id); };
 document.addEventListener("click", e => {
   LAST = Date.now(); const b = e.target.closest("[data-a],[data-sel]"); if (!b) return; const d = b.dataset;
   if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); const rr = runs().find(x => x.runId === id); toast((rr ? rr.cropName : id) + " W" + w + " opened");

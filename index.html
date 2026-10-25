@@ -640,11 +640,100 @@ function paneLog() {
   return `<h2>Log</h2><h3>Manager actions</h3>${D.mgrLog.length ? `<div class="tw"><table><tr><th>When</th><th>Action</th><th>Where</th><th>Reason</th><th>By</th></tr>${D.mgrLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)}${x.wave ? " W" + esc(x.wave) : ""}${x.activity_id ? " · " + esc(x.activity_id) : ""}</td><td>${esc(x.reason)}</td><td>${esc(x.by)}</td></tr>`).join("")}</table></div>` : `<p class="k">No manager actions logged yet.</p>`}
     <h3>Assignment trail</h3>${D.assignLog.length ? `<div class="tw"><table><tr><th>When</th><th>Change</th><th>Run · activity</th><th>From</th><th>To</th><th>By</th><th>Note</th></tr>${D.assignLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)} · ${esc(x.activity_id)}</td><td>${esc(x.from_name)}</td><td>${esc(x.to_name)}</td><td>${esc(x.by)}</td><td>${esc(x.note)}</td></tr>`).join("")}</table></div>` : `<p class="k">No assignments yet.</p>`}`;
 }
+
+/* ---------- Add run: the manager enters crop, platform, planting date and waves; the server calculates everything else ---------- */
+const PL = {crop:"", platform:"", dob:"", waves:1, reason:"", ovr:"", prev:null, key:"", meta:null, loading:false, err:"", sf:null, sfLoading:false};
+const plKey = () => [PL.crop, PL.platform, PL.dob, PL.waves].join("|");
+async function plMeta() {
+  if (PL.loading) return; PL.loading = true;
+  const r = await write("Loading crops", () => post({action:"meta"}));
+  PL.loading = false; if (r && r.crops) PL.meta = r.crops.filter(c => c.platforms.length).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  else PL.err = "Could not load the crop list. Press Refresh and open this tab again.";
+  if (TAB === "plan") side();
+}
+async function plShort() {
+  if (PL.sfLoading) return; PL.sfLoading = true;
+  try { PL.sf = (await post({action:"shortfall"})).years || []; } catch (e) { PL.sf = []; toast(e.message, true); }
+  PL.sfLoading = false; if (TAB === "plan") side();
+}
+function shortfallBlock() {
+  if (!PL.sf) { if (!PL.sfLoading) plShort(); return `<h3>Shortfall crops by year</h3><p class="k">Loading…</p>`; }
+  if (!PL.sf.length) return `<h3>Shortfall crops by year</h3><p class="k">None yet. Any wave added outside the season plan is listed here, by the year it is planted.</p>`;
+  return `<h3>Shortfall crops by year</h3><p class="k">Crops that needed extra waves beyond the plan. Use these when you build next season's plan.</p>` + PL.sf.map((y, i) => `<details ${i === 0 ? "open" : ""}><summary><b>Shortfall crops ${esc(y.year)}</b> · ${y.crops.length} crop${y.crops.length > 1 ? "s" : ""} · ${y.added} extra wave${y.added > 1 ? "s" : ""}</summary>
+    <div class="tw"><table><tr><th>Crop</th><th>Platform</th><th>Planned</th><th>Added</th><th>Planting dates</th><th>Why</th></tr>${y.crops.map(c => `<tr><td><b>${esc(c.cropName)}</b></td><td>${esc(pf(c.platform))}</td><td>${c.planned}</td><td><b>+${c.added}</b></td><td>${c.dates.map(fmt).join("<br>")}</td><td>${c.reasons.map(esc).join("<br>")}${c.outsideWindow ? `<br><span class="badge st-attention">${c.outsideWindow} outside window</span>` : ""}</td></tr>`).join("")}</table></div></details>`).join("");
+}
+function plRange(o) { return fmt(o.from) + (o.to !== o.from ? " – " + fmt(o.to) : ""); }
+function plBlocked() {
+  const s = PL.prev; if (!s || PL.key !== plKey()) return true;
+  return s.schedule.some(w => w.savedRun) || (s.schedule.some(w => w.inWindow === false) && !PL.ovr.trim()) || (s.schedule.some(w => !w.inPlan && !w.extra) && !PL.reason.trim());
+}
+function panePlan() {
+  if (!PL.meta) { if (!PL.loading && !PL.err) plMeta(); return `<h2>Add run</h2><p class="k">${esc(PL.err || "Loading crops…")}</p>`; }
+  const c = PL.meta.find(x => x.code === PL.crop), plats = c ? c.platforms : [];
+  const form = `<h2>Add run</h2><p class="k">Enter four things. The system works out sow date, phases, trays, material, where it is propagated and where it is planted.</p>
+  <div class="frm"><label class="k">Crop <select data-pl="crop"><option value="">Choose a crop…</option>${PL.meta.map(x => `<option value="${esc(x.code)}" ${x.code === PL.crop ? "selected" : ""}>${esc(x.name)} (${esc(x.code)})</option>`).join("")}</select></label>
+  <label class="k">Location / platform <select data-pl="platform" ${c ? "" : "disabled"}><option value="">Choose…</option>${plats.map(x => `<option value="${esc(x)}" ${x === PL.platform ? "selected" : ""}>${esc(pf(x))}</option>`).join("")}</select></label>
+  <label class="k">Planting date <input type="date" data-pl="dob" value="${esc(PL.dob)}"></label>
+  <label class="k">Number of waves <input type="number" min="1" max="20" step="1" data-pl="waves" value="${esc(PL.waves)}"></label></div>
+  <div class="row"><button type="button" data-pl-act="calc">Calculate</button></div>${PL.err ? `<div class="note" role="alert">${esc(PL.err)}</div>` : ""}`;
+  const s = PL.prev; if (!s) return form + shortfallBlock();
+  const stale = PL.key !== plKey(), w0 = s.schedule[0], F = s.platform === "F", W = s.window, bad = s.schedule.filter(w => w.inWindow === false);
+  const extra = s.schedule.some(w => !w.inPlan && !w.extra), dup = s.schedule.filter(w => w.savedRun);
+  const facts = `<div class="facts"><div><span class="k">Sow date</span><b>${fmt(w0.sow)}</b></div><div><span class="k">${s.direct ? "Seeding date" : "Transplant (DOB)"}</span><b>${fmt(w0.plant)}</b></div>
+  <div><span class="k">Trays</span><b>${s.traysPerWave ? s.traysPerWave + (s.trayCells ? " · " + s.trayCells + "-cell" : "") : "None (direct)"}</b></div><div><span class="k">Material per wave</span><b>${w0.material ? Number(w0.material).toLocaleString() : "Bulk"}</b></div>
+  <div><span class="k">Propagation</span><b>${esc(s.propagationLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(s.plantingLocation)}${s.bedAssignment ? " · bed " + esc(s.bedAssignment) : ""}</b></div>
+  <div><span class="k">Waves · spacing</span><b>${s.waves} · every ${s.gapDays} d</b></div><div><span class="k">Platform</span><b>${esc(pf(s.platform))}${s.runType === "ADDITIONAL" ? " (unplanned)" : ""}</b></div></div>`;
+  const rows = `<div class="tw"><table><tr><th>Wave</th><th>Sow</th><th>${s.direct ? "Seed" : "Transplant"}</th><th>Plan</th>${F ? "<th>Oregon window</th>" : ""}</tr>${s.schedule.map(w => `<tr><td>W${w.wave}</td><td>${fmt(w.sow)}</td><td>${fmt(w.plant)}</td><td>${esc(w.planStatus)}</td>${F ? `<td>${w.inWindow === false ? "<b>✕ Outside</b>" : w.inWindow === true ? "✓ Inside" : "No window on file"}</td>` : ""}</tr>`).join("")}</table></div>`;
+  const ph = (w0.phases || []).length ? `<details><summary>Propagation phases (wave 1)</summary><table><tr><th>Phase</th><th>Days</th><th>Starts</th><th>Ends</th></tr>${w0.phases.map(p => `<tr><td>${esc(p.phase)}</td><td>${p.days}</td><td>${fmt(p.start)}</td><td>${fmt(p.end)}</td></tr>`).join("")}</table></details>` : "";
+  let win = "";
+  if (F) {
+    if (!W || W.none) win = `<div class="note">No Oregon window is on file for this crop in the field, so the planting date was not checked.</div>`;
+    else if (W.unparsed) win = `<div class="note">Oregon window on file: ${esc(W.text)}. It could not be read automatically, so check the dates yourself.</div>`;
+    else if (!bad.length) win = `<p class="k">✓ Every planting date is inside the Oregon window (${esc(W.text)}).</p>`;
+    else win = `<div class="al" role="alert"><b>⚠ Outside the Oregon planting window</b><br>${bad.map(w => "Wave " + w.wave + " · " + fmt(w.plant)).join("<br>")}<br>Allowable window: <b>${esc(W.text)}</b>
+      ${W.options.length ? `<div class="k" style="margin-top:6px">Plant inside an allowed range instead:</div><div class="row">${W.options.map(o => `<button type="button" class="alt sm" data-pl-act="pick" data-from="${esc(o.from)}">${esc(plRange(o))}</button>`).join("")}</div>` : ""}
+      <label class="k">Or plant outside the window anyway. Reason (required) <input type="text" data-pl="ovr" value="${esc(PL.ovr)}" placeholder="Why is this date needed?"></label></div>`;
+  }
+  const why = extra ? `<label class="k">Why is this extra run needed? (required) <input type="text" data-pl="reason" value="${esc(PL.reason)}" placeholder="e.g. unexpected demand"></label><p class="k">Not in the season plan: saved as an unplanned run and recorded as a <b>shortfall crop for ${(s.shortfallYears || []).map(esc).join(" / ")}</b> in Planting_Plan.</p>` : `<p class="k">Every wave is already in the season plan.</p>`;
+  const flags = s.flags.filter(f => !/outside the Oregon/.test(f)).map(f => `<div class="note">${esc(f)}</div>`).join("");
+  const blocked = plBlocked();
+  return form + `<h3>${esc(s.cropName)} · ${esc(pf(s.platform))}</h3>${stale ? `<div class="note">Inputs changed. Press Calculate again.</div>` : ""}${facts}${rows}${ph}${win}${why}${flags}
+  <div class="row"><button type="button" data-pl-act="save" ${blocked ? "disabled" : ""}>Save run</button>${dup.length ? `<span class="k">Already covered by run ${esc(dup[0].savedRun)}.</span>` : ""}</div>` + shortfallBlock();
+}
+async function plCalc() {
+  PL.err = ""; if (!PL.crop || !PL.platform || !PL.dob) { PL.err = "Choose a crop, a platform and a planting date."; return side(); }
+  PL.waves = Math.max(1, Math.min(20, parseInt(PL.waves, 10) || 1));
+  const r = await write("Calculating", () => post({action:"plan", crop:PL.crop, platform:PL.platform, dob:PL.dob, waves:PL.waves}));
+  PL.prev = r || null; PL.key = r ? plKey() : ""; if (r) { PL.ovr = ""; } side();
+}
+async function plSave() {
+  const s = PL.prev; if (!s || PL.key !== plKey()) return;
+  if (!confirm(`Save ${s.cropName} (${pf(s.platform)}) · ${s.waves} wave${s.waves > 1 ? "s" : ""} from ${s.schedule[0].plant}?` + (s.outOfWindow ? "\n\nThis is OUTSIDE the Oregon planting window. Your reason will be logged." : ""))) return;
+  const r = await write("Saving run", () => post({action:"saveRun", crop:PL.crop, platform:PL.platform, dob:PL.dob, waves:PL.waves, noDup:true, mgrForm:true, reason:PL.reason.trim(), windowOverride:PL.ovr.trim()}));
+  if (!r || !r.runId) return;
+  toast("Run " + r.runId + " saved"); PL.sf = null; PL.prev = null; PL.key = ""; PL.reason = ""; PL.ovr = "";
+  await load(true); if (D && D.runs.some(x => x.runId === r.runId)) pick(r.runId, 1); render();
+}
+document.addEventListener("input", e => {   // reason fields: keep the Save button in step while typing, no re-render
+  const k = e.target.dataset && e.target.dataset.pl; if (k !== "reason" && k !== "ovr") return;
+  PL[k] = e.target.value; const b = document.querySelector('[data-pl-act="save"]'); if (b) b.disabled = plBlocked();
+});
+document.addEventListener("change", e => {
+  const k = e.target.dataset && e.target.dataset.pl; if (!k || k === "reason" || k === "ovr") return;
+  PL[k] = e.target.value;
+  if (k === "crop") { const c = PL.meta && PL.meta.find(x => x.code === PL.crop); PL.platform = c && c.platforms.length === 1 ? c.platforms[0] : ""; }
+  side();
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-pl-act]"); if (!b) return; LAST = Date.now(); const a = b.dataset.plAct;
+  if (a === "calc") plCalc(); else if (a === "save") plSave(); else if (a === "pick") { PL.dob = b.dataset.from; plCalc(); }
+});
+
 function side() {
   if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
-  const tabs = [["waves", "Waves", ""], ["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["log", "Log", ""]];
+  const tabs = [["waves", "Waves", ""], ["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["plan", "Add run", ""], ["log", "Log", ""]];
   $("tabs").innerHTML = tabs.map(([v, l, n]) => `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-a="tab" data-tab="${v}">${l}${n ? " (" + n + ")" : ""}</button>`).join("");
-  $("pane").innerHTML = TAB === "waves" ? wavesList() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : paneLog();
+  $("pane").innerHTML = TAB === "waves" ? wavesList() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : TAB === "plan" ? panePlan() : paneLog();
 }
 
 /* ---------- render ---------- */

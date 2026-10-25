@@ -1,85 +1,111 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Propagation Manager Console - Ngapori Ranch</title>
+<title>Activity Assignment Board - Ngapori Propagation</title>
 <style>
-/* Sun theme is the default: near-black on white, 2px edges, 48px touch targets, status shown by glyph + pattern as well as color. Night theme is a toggle. */
-:root{--bg:#eef2ec;--card:#fff;--ink:#07110b;--mute:#2f3f35;--line:#5c6d62;--edge:#07110b;--acc:#0a5a28;--acci:#fff;--accs:#d3efdb;--warn:#7a3000;--warns:#ffd8a6;--warnb:#e27100;--bad:#a0001b;--bads:#ffd5db;--blue:#0b3f8f;--blues:#dbe8ff}
-[data-theme=night]{--bg:#0a110d;--card:#141f18;--ink:#f6faf7;--mute:#c3d2c9;--line:#7d968a;--edge:#f6faf7;--acc:#63e590;--acci:#03200e;--accs:#173a25;--warn:#ffc37a;--warns:#3d2a0c;--warnb:#ff9d1f;--bad:#ff8b9b;--bads:#42121b;--blue:#9cc2ff;--blues:#12284a;color-scheme:dark}
-*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-h1{font-size:21px;margin:0}h2{font-size:18px;margin:0 0 8px}h3{font-size:16px;margin:14px 0 6px}p{margin:6px 0}
-.k{color:var(--mute);font-size:14px}.sp{flex:1}.hidden{display:none!important}b{font-weight:700}
-button,input,select{font:inherit;color:var(--ink)}
-input,select{min-height:48px;padding:8px 10px;border:2px solid var(--edge);border-radius:10px;background:var(--card);max-width:100%}
-button{min-height:48px;padding:8px 14px;border:2px solid var(--edge);border-radius:10px;background:var(--acc);color:var(--acci);font-weight:700;cursor:pointer}
-button.alt{background:var(--card);color:var(--ink)}button.on{background:var(--ink);color:var(--bg)}button.sm{min-height:40px;padding:4px 10px;font-size:15px}
-button.dng{background:var(--bad);color:#fff}button:disabled{opacity:.5;cursor:wait}
-:focus-visible{outline:4px solid var(--blue);outline-offset:2px}
-input[type=checkbox]{min-height:0;width:24px;height:24px;accent-color:var(--acc)}
-#top{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:2px solid var(--edge)}
-header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 14px}
-#cbar{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 14px;font-size:15px;border-top:2px solid var(--edge);background:var(--accs)}
-#cbar.off{background:var(--warns);color:var(--warn)}#cbar.stale{background:var(--bads);color:var(--bad)}
-.dot{width:14px;height:14px;border-radius:50%;background:var(--acc);border:2px solid var(--edge);display:inline-block}#cbar.off .dot{background:var(--warnb);border-radius:3px}
-#cbar.sync .dot{animation:pulse 1s infinite alternate}@keyframes pulse{to{opacity:.25}}@media(prefers-reduced-motion:reduce){#cbar.sync .dot{animation:none}}
-.note{background:var(--warns);color:var(--warn);border:2px solid var(--warnb);border-radius:10px;padding:8px 12px;margin:10px 14px;font-weight:600}
-.note.bad{background:var(--bads);color:var(--bad);border-color:var(--bad)}
-#kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:10px 14px 0}
-.kp{text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--edge);border-radius:12px;padding:8px 12px;min-height:0;display:block;font-weight:400}
-.kp b{display:block;font-size:26px;line-height:1.1}.kp.hot{border-color:var(--warnb);background:var(--warns);color:var(--warn)}.kp.hot b{color:var(--warn)}
-.lay{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(380px,.9fr);gap:14px;padding:12px 14px 40px;align-items:start}
-@media(max-width:980px){.lay{grid-template-columns:1fr}}
-.card{background:var(--card);border:2px solid var(--edge);border-radius:14px;padding:14px}
-#side{position:sticky;top:var(--hh,120px);max-height:calc(100vh - var(--hh,120px) - 12px);overflow:auto;padding:0}
-@media(max-width:980px){#side{position:static;max-height:none;overflow:visible}}
-#tabs{display:flex;gap:6px;padding:8px;position:sticky;top:0;z-index:5;background:var(--card);border-bottom:2px solid var(--edge);border-radius:12px 12px 0 0}
-@media(max-width:980px){#tabs{top:var(--hh,120px)}}
-#tabs button{flex:1;padding:6px 4px}#pane{padding:12px 14px 16px}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.chips button{min-height:44px}
-.badge{display:inline-flex;gap:5px;align-items:center;padding:2px 10px;border-radius:99px;font-weight:700;font-size:13px;border:2px solid var(--edge);background:var(--card);color:var(--ink);white-space:nowrap}
-.badge.st-occupied,.badge.ok{background:var(--accs);border-color:var(--acc)}.badge.st-ready{background:var(--accs);border-color:var(--acc)}
-.badge.st-attention,.badge.wait{background:var(--warns);color:var(--warn);border-color:var(--warnb)}.badge.bad{background:var(--bads);color:var(--bad);border-color:var(--bad)}
-.badge.st-post{background:repeating-linear-gradient(45deg,#c3c9c5 0 4px,#e8ece9 4px 8px);color:#000}.badge.open{background:var(--blues);color:var(--blue);border-color:var(--blue)}
-.badge.ws-IN_PROGRESS{background:var(--accs);border-color:var(--acc)}.badge.ws-PAUSED{background:var(--warns);color:var(--warn);border-color:var(--warnb)}.badge.ws-ASSIGNED{background:var(--blues);color:var(--blue);border-color:var(--blue)}
-.trk{margin:12px 0 4px;display:flex;gap:10px;align-items:baseline;border-bottom:2px solid var(--edge);padding-bottom:2px}
-.wg{margin:8px 0 12px}.wh{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;text-align:left;background:var(--card);color:var(--ink);font-weight:400;border-left-width:8px;padding:6px 10px;min-height:48px;margin-bottom:6px}
-.wh.sel{outline:4px solid var(--edge);outline-offset:1px}.wh .sw{width:16px;height:16px;border-radius:4px;border:2px solid var(--edge)}
-.cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
-.cells .cell{aspect-ratio:1;min-height:0;min-width:0;padding:0;font-size:11px;border-radius:6px;position:relative;background:var(--c,#555);color:#fff;border:3px solid transparent;text-shadow:0 0 2px #000,0 0 2px #000;overflow:hidden}
-.cells .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:13px}.cells .cell b{font-size:14px}.cells .cell small{font-size:10px;opacity:.9}.wv{display:inline-block;background:var(--ink);color:var(--card);border-radius:6px;padding:0 7px;font-weight:700}
-.cell.st-attention{border-color:var(--warnb)}.cell.st-attention::after,.cell.st-ready::after,.cell.st-post::after{position:absolute;top:0;right:0;font-size:11px;line-height:1;padding:1px 4px;border-radius:0 0 0 6px;text-shadow:none;color:#000;background:var(--warnb)}
-.cell.st-attention::after{content:"!"}.cell.st-ready{border-color:#fff;box-shadow:0 0 0 3px var(--acc)}.cell.st-ready::after{content:"\2192";background:#fff}
-.cell.st-post{background:repeating-linear-gradient(45deg,#7d8780 0 5px,#d4dad6 5px 10px);color:#000;text-shadow:none;border-color:#000}.cell.st-post::after{content:"S";background:#fff}
-.cell.sel{outline:4px solid var(--edge);outline-offset:1px;z-index:1}.cells .cell.e{background:transparent;border:2px dashed var(--line);cursor:default}
-.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:8px 0}.leg span{display:inline-flex;gap:6px;align-items:center}.leg i{width:18px;height:18px;border-radius:4px;border:2px solid var(--edge);display:inline-block}
-.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}.facts div{border:2px solid var(--line);border-radius:10px;padding:6px 10px}.facts b{display:block}
-.pbar{display:flex;height:16px;border:2px solid var(--edge);border-radius:8px;overflow:hidden;margin:8px 0;background:var(--card)}.pbar i{display:block;height:100%}.pbar .p-dn{background:var(--acc)}.pbar .p-ip{background:var(--blue)}.pbar .p-as{background:var(--blues)}.pbar .p-un{background:var(--warns)}.pleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}.pleg span b{font-size:16px}
-.light{display:flex;align-items:center;gap:12px;border:2px solid var(--edge);border-radius:12px;padding:8px 14px;margin:6px 0}.light i{width:26px;height:26px;border-radius:50%;border:2px solid var(--edge);flex:none}.light span{font-size:20px;font-weight:700;display:flex;flex-direction:column}.light small{font-size:13px;font-weight:400}
-.light.go{background:var(--accs);border-color:var(--acc);color:var(--acc)}.light.go i{background:#1fb455;border-color:var(--acc);box-shadow:0 0 0 4px #bfe9cb}.light.stop{background:var(--warns);border-color:var(--warnb);color:var(--warn)}.light.stop i{background:#e27100;border-color:var(--warn)}
-.nxt{display:flex;flex-direction:column;gap:3px;border:3px solid var(--blue);background:var(--blues);color:var(--ink);border-radius:12px;padding:10px 14px;margin:8px 0}.nxt .nx-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}.nxt .nx-t{font-size:18px}.nxt .nx-x{font-size:14px}.nxt button{align-self:flex-start;margin-top:6px}
-.grp{border:2px solid var(--line);border-radius:10px;padding:2px 10px;margin:6px 0;background:var(--card)}.grp>summary{font-weight:700;padding:6px 0;cursor:pointer}.grp.cur{border-color:var(--blue)}.grp.dim{background:#e9ece9;border-color:#b5bdb7;color:#5d6a62}.grp.dim>summary{color:#5d6a62}.al-row.dim{color:#6b776f}.al-row.dim .al-n b{color:#6b776f}.badge.gry{background:#e1e5e2;border-color:#aab3ad;color:#55625a}
-.fin{background:#e9ece9;border-color:#b5bdb7;color:#5d6a62}.fin>summary{justify-content:space-between;gap:10px;color:#5d6a62}.fin .d{font-size:14px;margin:2px 0 4px;color:#5d6a62}
-.al-list{list-style:none;margin:0;padding:0}.al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}.al-row:last-child{border-bottom:0}.al-n{display:flex;flex-direction:column}.al-w{font-size:13px}.badge.prog{background:var(--blue);color:#fff;border-color:var(--blue)}
-.blk{border:2px solid var(--edge);border-radius:12px;padding:10px 12px;margin:12px 0}.blk h3{margin-top:0}
-.g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}.g .n{flex:1;min-width:190px}
-.act{border-bottom:2px dashed var(--line);padding:6px 0}.act label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;cursor:pointer}.act .n{flex:1;min-width:170px}
-.act .d{font-size:14px;color:var(--mute);margin:2px 0 4px 34px}.act details{margin:4px 0 4px 34px}
-details{border:2px solid var(--line);border-radius:10px;padding:4px 10px;margin:6px 0}summary{cursor:pointer;font-weight:700;min-height:40px;display:flex;align-items:center}
-.frm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.frm input[type=text]{flex:1;min-width:170px}.frm input[type=number]{width:96px}.frm input.u{width:110px}
-.team{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:4px 12px}.team label{display:flex;gap:10px;align-items:center;min-height:44px}
-.wk{border:2px solid var(--edge);border-left-width:10px;border-radius:12px;padding:8px 12px;margin:8px 0}.wk.ws-IN_PROGRESS{border-left-color:var(--acc)}.wk.ws-PAUSED{border-left-color:var(--warnb);background:var(--warns);color:var(--warn)}.wk.ws-ASSIGNED{border-left-color:var(--blue)}.wk.ws-IDLE{border-left-color:var(--line)}
-.al{border:2px solid var(--warnb);background:var(--warns);color:var(--warn);border-radius:12px;padding:8px 12px;margin:8px 0}.al .k{color:var(--warn)}
-table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:5px 8px;border-bottom:2px solid var(--line);font-size:14px;vertical-align:top}th{color:var(--mute)}.tw{overflow-x:auto}
-#login{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}#login .card{width:min(380px,100%);display:grid;gap:10px}#login label{display:grid;gap:3px;font-weight:700}
-#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:50;max-width:92vw;font-weight:700}
-body.busy{cursor:progress}
-body.out #top,body.out #kpi,body.out .lay,body.out #note{display:none!important}
-body.out #login{background:var(--bg)}
-.mv{border:2px solid var(--warnb);background:var(--warns);color:var(--warn);border-radius:10px;padding:6px 10px;margin:4px 0}
-.rg{margin:4px 0 4px 34px}.rg .team{margin:6px 0}.rg .arrow{font-weight:700;margin:4px 0}
-.rv .d{margin-left:0}
+:root{--bg:#edf1ec;--card:#fff;--ink:#17231c;--mute:#5d6b62;--line:#cfd8cf;--acc:#2f6f4f;--accs:#dcebe1;--warn:#a85d00;--warns:#fbeccf;--bad:#a12d2d}
+@media(prefers-color-scheme:dark){:root{--bg:#111a14;--card:#1a261e;--ink:#e6efe8;--mute:#92a398;--line:#2f4036;--acc:#6fc596;--accs:#21382b;--warn:#f0b455;--warns:#3a2c10;--bad:#f08a8a;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{font-size:20px;margin:0}h2{font-size:16px;margin:0 0 8px}h3{font-size:14px;margin:14px 0 6px}.k{color:var(--mute);font-size:13px}.sp{flex:1}
+input,select,button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-height:36px}
+button{background:var(--acc);color:var(--bg);border:0;font-weight:600;cursor:pointer}button.alt{background:var(--bg);color:var(--ink);border:1px solid var(--line)}button:disabled{opacity:.5;cursor:wait}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.conn{font-size:13px;padding:3px 10px;border-radius:99px;background:var(--accs);color:var(--acc);font-weight:600}.conn.off{background:var(--warns);color:var(--warn)}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 16px;font-size:13px;color:var(--mute)}.leg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.lay{display:grid;grid-template-columns:minmax(290px,380px) 1fr;gap:14px;padding:0 16px 40px;align-items:start}
+@media(max-width:900px){.lay{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.note{background:var(--warns);color:var(--warn);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:14px}.hidden{display:none!important}
+.run{border-top:1px solid var(--line);padding:10px 0}.run:first-of-type{border-top:0}.run b{font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.chip{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-left-width:5px;text-align:left;font-weight:400;font-size:13px;line-height:1.3;padding:5px 9px}
+.chip.sel{outline:2px solid var(--ink)}
+.s-prop{border-left-color:var(--mute)!important;border-style:dashed}.s-init{border-left-color:var(--acc)!important}.s-occ{border-left-color:var(--acc)!important;background:var(--accs)}.s-exc{border-left-color:var(--warn)!important;background:var(--warns)}.s-done{border-left-color:var(--line)!important;opacity:.7}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-weight:600;font-size:12px;background:var(--bg);border:1px solid var(--line)}
+.badge.s-occ,.badge.s-init{background:var(--accs);color:var(--acc);border-color:var(--accs)}.badge.s-exc{background:var(--warns);color:var(--warn);border-color:var(--warns)}
+.trays{display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:3px;margin:10px 0}
+.t{aspect-ratio:1;border-radius:3px;border:1px solid transparent;padding:0;min-height:0;cursor:pointer;font-size:9px;font-weight:700;line-height:1;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.7);overflow:hidden}
+.t.wv{outline:2px solid var(--ink);outline-offset:-2px}.td{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0;display:grid;gap:2px;font-size:14px}
+label.ar{cursor:pointer}label.ar input,.team input{min-height:0;width:18px;height:18px}.team{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:4px 12px}.team label{display:flex;gap:8px;align-items:center}
+.t.e{background:var(--bg);border-color:var(--line);cursor:default}
+.t.prop{background-image:repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.6) 3px 5px)}
+.t.exc{border-color:var(--warn);box-shadow:0 0 0 2px var(--warn)}.t.sel{outline:3px solid var(--ink);outline-offset:1px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}.grid div{border:1px solid var(--line);border-radius:8px;padding:8px 10px}.grid b{display:block}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);font-size:14px}th{color:var(--mute);font-size:13px}tr.cur td{background:var(--accs);font-weight:600}
+.ar{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:14px}.ar .n{flex:1;min-width:180px}
+details{margin:6px 0;border:1px solid var(--line);border-radius:8px;padding:6px 10px}summary{cursor:pointer;font-weight:600}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.q{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}.q .n{flex:1;min-width:200px}
+.pri{font-weight:700;font-size:12px;padding:2px 8px;border-radius:5px}.pri.must{background:var(--bad);color:var(--bg)}.pri.att{background:var(--warns);color:var(--warn)}.pri.rtn{background:var(--accs);color:var(--acc)}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;z-index:9;max-width:90vw}
+.badge.s-gap{background:var(--bg);color:var(--mute);border:1px dashed var(--mute)}
+.chk{display:flex;gap:8px;align-items:center}.chk input{min-height:0;width:18px;height:18px}
+.act{border-bottom:1px dashed var(--line);padding:4px 0}.act>label.ar{border-bottom:0;padding-bottom:0}.act .d{font-size:13px;color:var(--mute);margin:0 0 4px 28px}.act .row,.act details{margin:4px 0 4px 28px}.act input[type=text]{flex:1;min-width:170px}
+.gl .q:last-child{border-bottom:0}
+#prof,#room{--blue:#0b3f8f;--blues:#dbe8ff;--warnb:#e27100;--bads:#ffd5db}
+@media(prefers-color-scheme:dark){#prof,#room{--blue:#9cc2ff;--blues:#1b2c4a;--bads:#3d1c20}}
+#prof .badge,#room .badge{display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+#prof .badge.st-occupied,#prof .badge.st-ready,#prof .badge.ok,#room .badge.st-occupied,#room .badge.st-ready,#room .badge.ok{background:var(--accs);color:var(--acc);border-color:var(--acc)}
+#prof .badge.st-attention,#prof .badge.wait,#room .badge.st-attention,#room .badge.wait{background:var(--warns);color:var(--warn);border-color:var(--warnb)}
+#prof .badge.st-post,#room .badge.st-post{background:repeating-linear-gradient(45deg,var(--line) 0 4px,var(--bg) 4px 8px)}
+#prof .badge.bad,#room .badge.bad{background:var(--bads);color:var(--bad);border-color:var(--bad)}
+#prof .badge.open,#room .badge.open{background:var(--blues);color:var(--blue);border-color:var(--blue)}
+#prof .badge.prog,#room .badge.prog{background:var(--blue);color:var(--bg);border-color:var(--blue)}
+#prof .badge.gry,#room .badge.gry{color:var(--mute)}
+#prof .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:8px 0}#prof .facts div{border:1px solid var(--line);border-radius:8px;padding:6px 10px}#prof .facts b{display:block}
+#prof .light{display:flex;align-items:center;gap:12px;border:2px solid var(--ink);border-radius:12px;padding:8px 14px;margin:6px 0}#prof .light i{width:26px;height:26px;border-radius:50%;border:2px solid var(--ink);flex:none}#prof .light span{font-size:20px;font-weight:700;display:flex;flex-direction:column}#prof .light small{font-size:13px;font-weight:400}
+#prof .light.go{background:var(--accs);border-color:var(--acc);color:var(--acc)}#prof .light.go i{background:#1fb455;border-color:var(--acc);box-shadow:0 0 0 4px var(--accs)}#prof .light.stop{background:var(--warns);border-color:var(--warnb);color:var(--warn)}#prof .light.stop i{background:var(--warnb);border-color:var(--warn)}
+#prof .nxt{display:flex;flex-direction:column;gap:3px;border:3px solid var(--blue);background:var(--blues);color:var(--ink);border-radius:12px;padding:10px 14px;margin:8px 0}#prof .nxt .nx-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}#prof .nxt .nx-t{font-size:18px}#prof .nxt .nx-x{font-size:14px}#prof .nxt button{align-self:flex-start;margin-top:6px}
+#prof .grp{border:2px solid var(--line);border-radius:10px;padding:2px 10px;margin:6px 0;background:var(--card)}#prof .grp>summary{font-weight:700;padding:6px 0}#prof .grp.cur{border-color:var(--blue)}#prof .grp.dim{background:var(--bg);color:var(--mute)}#prof .grp.dim>summary{color:var(--mute)}#prof .al-row.dim,#prof .al-row.dim .al-n b{color:var(--mute)}
+#prof .fin{background:var(--bg);color:var(--mute)}#prof .fin>summary{display:flex;justify-content:space-between;gap:10px;color:var(--mute)}#prof .fin .d{font-size:14px;margin:2px 0 4px;color:var(--mute)}
+#prof .al-list{list-style:none;margin:0;padding:0}#prof .al-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}#prof .al-row:last-child{border-bottom:0}#prof .al-n{display:flex;flex-direction:column}#prof .al-w{font-size:13px}
+#prof .blk{border:2px solid var(--ink);border-radius:12px;padding:10px 12px;margin:12px 0}#prof .blk h3{margin-top:0}
+#prof .g{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:2px dashed var(--line)}#prof .g .n{flex:1;min-width:190px}
+#prof .act{border-bottom:2px dashed var(--line);padding:6px 0}#prof .act label{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;cursor:pointer}#prof .act .n{flex:1;min-width:170px}#prof .act .d{font-size:14px;color:var(--mute);margin:2px 0 4px 34px}#prof .act details{margin:4px 0 4px 34px}
+#prof .frm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}#prof .frm input[type=text]{flex:1;min-width:170px}#prof .frm input[type=number]{width:96px}#prof .frm input.u{width:110px}
+#prof .mv{border:2px solid var(--warnb);background:var(--warns);color:var(--warn);border-radius:10px;padding:6px 10px;margin:4px 0}
+#prof .rg{margin:4px 0 4px 34px}#prof .rg .team{margin:6px 0}#prof .rg .arrow{font-weight:700;margin:4px 0}
+#prof button.dng{background:var(--bad);color:var(--bg)}#prof button.sm{min-height:30px;padding:3px 10px;font-size:13px}
+#prof .team label input,#prof .act label input{min-height:0;width:18px;height:18px}
+#room .trk{margin:12px 0 4px;display:flex;gap:10px;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:2px}
+#room .wg{margin:8px 0 12px}#room .wh{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;text-align:left;background:var(--card);color:var(--ink);font-weight:400;border:1px solid var(--line);border-left-width:8px;padding:6px 10px;min-height:44px;margin-bottom:6px}
+#room .wh.sel{outline:4px solid var(--ink);outline-offset:1px}#room .wh .sw{width:16px;height:16px;border-radius:4px;border:2px solid var(--ink)}
+#room .wv{display:inline-block;background:var(--ink);color:var(--card);border-radius:6px;padding:0 7px;font-weight:700}
+#room .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:4px}
+#room .cell{aspect-ratio:1;min-height:0;min-width:0;padding:0;border-radius:6px;position:relative;background:var(--c,#555);color:#fff;border:3px solid transparent;text-shadow:0 0 2px #000,0 0 2px #000;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:13px}#room .cell b{font-size:14px}#room .cell small{font-size:10px;opacity:.9}
+#room .cell.st-attention{border-color:var(--warnb)}#room .cell.st-attention::after,#room .cell.st-ready::after,#room .cell.st-post::after{position:absolute;top:0;right:0;font-size:11px;line-height:1;padding:1px 4px;border-radius:0 0 0 6px;text-shadow:none;color:#000;background:var(--warnb)}
+#room .cell.st-attention::after{content:"!"}#room .cell.st-ready{border-color:#fff;box-shadow:0 0 0 3px var(--acc)}#room .cell.st-ready::after{content:"\2192";background:#fff}
+#room .cell.st-post{background:repeating-linear-gradient(45deg,#7d8780 0 5px,#d4dad6 5px 10px);color:#000;text-shadow:none;border-color:#000}#room .cell.st-post::after{content:"S";background:#fff}
+#room .cell.sel{outline:4px solid var(--ink);outline-offset:1px;z-index:1}#room .cell.e{background:transparent;border:2px dashed var(--line);cursor:default;aspect-ratio:1}
+#room .rleg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin:8px 0}#room .rleg span{display:inline-flex;gap:6px;align-items:center}#room .rleg i{width:18px;height:18px;border-radius:4px;border:2px solid var(--ink);display:inline-block}
+#room .chips button.on{background:var(--acc);color:var(--bg);border:0}
+button.on{background:var(--acc);color:var(--bg);border:0}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cal>div{background:var(--card);min-height:88px;padding:3px 4px;font-size:12px;min-width:0}.cal>.h{min-height:0;color:var(--mute);font-weight:600;text-align:center;padding:5px 0}.cal>.o{background:var(--bg)}.cal>.o .dn{opacity:.5}
+.cal .dn{display:inline-block;min-height:0;padding:0 6px;font-size:12px;font-weight:600;background:none;color:var(--ink);border:0;border-radius:99px}.cal .tdy .dn{background:var(--acc);color:var(--bg)}
+.cal .ev{display:block;width:100%;text-align:left;font-weight:400;font-size:11.5px;line-height:1.3;padding:2px 4px;margin-top:2px;min-height:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:0;border-left:4px solid var(--acc);background:var(--bg);color:var(--ink);border-radius:4px}
+.cal .ev.more{border-left-color:var(--line);color:var(--mute)}.cal>.sd{outline:2px solid var(--ink);outline-offset:-2px}
+.tf{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 12px;align-items:end;margin:8px 0}.tf label{display:grid;gap:2px}#login{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;padding:16px}#login .card{width:min(360px,100%);display:grid;gap:10px;margin:0}#login label{display:grid;gap:2px}
+.tw{overflow-x:auto}.lt tr.sub td{color:var(--mute)}.lt tr.sub td:first-child{padding-left:28px}.lt tr.tot td{font-weight:700;border-top:2px solid var(--line)}.lt tr.grp td{font-weight:600}
+.ag{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}.ag .n{flex:1;min-width:220px}
+@media print{header,.leg,aside,#kpis,#tabs,#err,#toast,#room,#waves,#prof,#qp,#team,#lab,#cal .noprint{display:none!important}body{background:#fff}.lay{display:block;padding:0}#cal{border:0;display:block!important}}
+@media(prefers-reduced-motion:no-preference){.t{transition:transform .1s}.t:not(.e):hover{transform:scale(1.25)}}
+
+main{min-width:0}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:0 0 12px;scroll-margin-top:70px}.tabs button{white-space:nowrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 12px}
+button.kpi{display:flex;flex-direction:column;align-items:flex-start;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-height:62px;font-weight:400;gap:0}
+button.kpi b{font-size:24px;line-height:1.1}button.kpi span{font-size:13px;color:var(--mute)}button.kpi.hot{background:var(--warns);border-color:var(--warn)}button.kpi.hot b,button.kpi.hot span{color:var(--warn)}
+details.cg{border:1px solid var(--line);padding:4px 10px}details.cg>summary{padding:4px 0}details.tk{border:0;padding:0}details.tk>summary{border-bottom:2px solid var(--ink);padding-bottom:2px;margin-bottom:6px;font-size:15px}
+#prof details.blk{padding:8px 12px}#prof details.blk>summary{font-size:16px;font-weight:700;padding:2px 0;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}#prof details.blk[open]>summary{margin-bottom:8px}
+#waves{--blue:#0b3f8f;--blues:#dbe8ff;--warnb:#e27100;--bads:#ffd5db}
+@media(prefers-color-scheme:dark){#waves{--blue:#9cc2ff;--blues:#1b2c4a;--bads:#3d1c20}}
+#waves .badge{display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+#waves .badge.st-occupied,#waves .badge.st-ready{background:var(--accs);color:var(--acc);border-color:var(--acc)}
+#waves .badge.st-attention{background:var(--warns);color:var(--warn);border-color:var(--warnb)}
+#waves .badge.st-post{background:repeating-linear-gradient(45deg,var(--line) 0 4px,var(--bg) 4px 8px)}
+#waves .wv{display:inline-block;background:var(--ink);color:var(--card);border-radius:6px;padding:0 7px;font-weight:700}
+#waves .chips button.on{background:var(--acc);color:var(--bg);border:0}
+#waves .q{padding:10px 0}
 
 #addact{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}
 #addact .card{width:min(440px,100%);display:grid;gap:10px;margin:0;max-height:92vh;overflow:auto;background:var(--card);color:var(--ink);border:2px solid var(--edge,var(--line));border-radius:14px;padding:16px}
@@ -89,258 +115,309 @@ body.out #login{background:var(--bg)}
 #addact .aae{background:var(--bads,var(--warns));color:var(--bad);border:2px solid var(--bad);border-radius:10px;padding:8px 10px;font-weight:700}
 #addact .arow{display:flex;gap:8px;flex-wrap:wrap}#addact details{display:grid;gap:8px}#addact summary{cursor:pointer;font-weight:700;min-height:32px}
 </style></head><body>
-<div id="top">
 <header>
-<h1>Propagation Manager</h1><span class="k">Ngapori Ranch · Bay 3</span><span class="sp"></span>
-<button class="alt sm" type="button" data-a="sync" id="bRef">Refresh</button>
-<button class="alt hidden" id="bAddAct" type="button" data-addact>+ Add activity</button>
-<button class="alt" id="bMgr" type="button" data-a="mgr">Manager mode: off</button>
-<button class="alt sm" id="bTheme" type="button" data-a="theme">Night</button>
+<h1>Activity Assignment Board</h1><span class="k">Ngapori Ranch · Propagation</span>
+<span class="conn off" id="conn">Connecting…</span><span class="sp"></span>
+<span class="k" id="who"></span><button class="alt" id="bAddAct" type="button" data-addact>+ Add activity</button><button class="alt" id="logout" type="button">Log out</button>
+<button class="alt" id="refresh" type="button">Refresh</button>
 </header>
-<div id="cbar" class="sync"><span class="dot"></span><b>Connecting…</b></div>
-</div>
-<div id="note" class="note hidden" role="alert"></div>
-<div id="kpi"></div>
-<div class="lay">
-<section class="card" id="left"><p class="k">Loading the propagation room…</p></section>
-<aside class="card" id="side"><div id="tabs" role="tablist"></div><div id="pane"></div></aside>
-</div>
+<div class="leg"><span><i style="background:var(--mute);opacity:.6"></i>Not initiated</span><span><i style="background:var(--acc);opacity:.45"></i>Initiated</span><span><i style="background:var(--acc)"></i>In propagation</span><span><i style="background:var(--warn)"></i>Needs attention</span><span><i style="background:var(--line)"></i>Planted</span><span><i style="border:1px solid var(--line)"></i>Empty tray</span><span><i style="border:1px dashed var(--mute)"></i>Planned, no run</span></div>
 <div id="login" class="hidden" role="dialog" aria-modal="true" aria-label="Sign in"><div class="card">
-<h2>Propagation Manager</h2><p class="k">Ranch propagation console for managers and founders. You are signed out after 2 hours without use.</p>
-<label>Worker ID <span id="luw"></span></label>
-<label>PIN <input id="lp" type="password" inputmode="numeric" autocomplete="new-password" placeholder="PIN"></label>
-<div id="lerr" class="note bad hidden" role="alert" style="margin:0"></div>
-<div class="row" style="margin:0"><button id="lgo" type="button" data-a="login">Sign in</button></div></div></div>
+<h2>Activity Assignment Board</h2><p class="k">Ngapori Ranch · Propagation. Managers sign in with their user name and PIN.</p>
+<label class="k">User name <input id="lu" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+<label class="k">PIN <input id="lp" type="password" inputmode="numeric" autocomplete="current-password"></label>
+<div id="lerr" class="note hidden" role="alert"></div>
+<button id="lgo" type="button">Sign in</button></div></div>
+<div id="err" class="note hidden" style="margin:0 16px 10px"></div>
+<div class="lay">
+<aside><section class="card" id="crops"><p class="k">Loading crops and waves…</p></section>
+<section class="card hidden" id="gaps"></section></aside>
+<main>
+<div id="kpis" class="kpis"></div>
+<nav id="tabs" class="tabs" role="tablist" aria-label="Board sections"></nav>
+<section class="card" id="cal"><p class="k">Loading the production calendar…</p></section>
+<section class="card hidden" id="room"></section>
+<section class="card hidden" id="waves"></section>
+<section class="card hidden" id="prof"></section>
+<section class="card hidden" id="qp"></section>
+<section class="card hidden" id="team"></section>
+<section class="card hidden" id="lab"></section>
+</main></div>
 <div id="addact" class="hidden" role="dialog" aria-modal="true" aria-labelledby="aat"><div class="card">
 <h2 id="aat">Add activity</h2>
 <label>Activity name <input id="aan" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Tray flipping"></label>
 <label>Description <textarea id="aad" maxlength="300" placeholder="What the worker does, in a sentence or two"></textarea></label>
 <p class="k" style="margin:0">The system fills in the ID, group, timing and scope, and adds it to every run.</p>
 <details><summary>More options (optional)</summary>
-<label>Group <select id="aap"><option value="">Automatic (Phase 7: Added activities)</option><option value="Phase 1: Pre-sowing and media preparation">Phase 1: Pre-sowing and media preparation</option><option value="Phase 2: Seeding and batching">Phase 2: Seeding and batching</option><option value="Phase 3: Germination and early emergence">Phase 3: Germination and early emergence</option><option value="Phase 4: Grow-out and crop maintenance">Phase 4: Grow-out and crop maintenance</option><option value="Phase 5: Hardening off and pre-delivery">Phase 5: Hardening off and pre-delivery</option><option value="Phase 6: Fulfillment and delivery">Phase 6: Fulfillment and delivery</option></select></label>
+<label>Group <select id="aap"><option value="">Automatic (Added activities)</option><option value="Phase 1: Pre-sowing and media preparation">Phase 1: Pre-sowing and media preparation</option><option value="Phase 2: Seeding and batching">Phase 2: Seeding and batching</option><option value="Phase 3: Germination and early emergence">Phase 3: Germination and early emergence</option><option value="Phase 4: Grow-out and crop maintenance">Phase 4: Grow-out and crop maintenance</option><option value="Phase 5: Hardening off and pre-delivery">Phase 5: Hardening off and pre-delivery</option><option value="Phase 6: Fulfillment and delivery">Phase 6: Fulfillment and delivery</option></select></label>
 <label class="chk"><input type="checkbox" id="aac"> Workers record a quantity when they finish</label>
 </details>
 <div id="aae" class="aae hidden" role="alert"></div>
 <div class="arow"><button id="aago" type="button">Add activity</button><button id="aax" type="button" class="alt">Cancel</button></div>
 </div></div>
-<div id="toast" class="hidden" role="status" aria-live="polite"></div>
+<div id="toast" class="hidden"></div>
 <script>
-"use strict";
-const API_URL = "https://script.google.com/macros/s/AKfycbz7qyhFT5BRUpiqLCnjtT8gRX-UQ-I0lQhF__H6dgCU_Rql2WFOMuNm-YLXazi0Zrir_g/exec"; // same Apps Script web app as the assignment board (ends in /exec)
-const POLL_MS = 60000, IDLE_MS = 120 * 60000, STALE_MIN = 30, BAY_SQFT = 800;
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmt = s => s ? new Date(String(s).slice(0, 10) + "T00:00:00").toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}) : "";
+const API_URL = "https://script.google.com/macros/s/AKfycbz7qyhFT5BRUpiqLCnjtT8gRX-UQ-I0lQhF__H6dgCU_Rql2WFOMuNm-YLXazi0Zrir_g/exec"; // Apps Script web app URL (ends in /exec)
+const $ = id => document.getElementById(id), esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = s => s ? new Date(s + "T00:00:00").toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}) : "";
 const add = (iso, n) => new Date(Date.parse(iso) + n * 864e5).toISOString().slice(0, 10);
 const days = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 const localToday = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
-const col = c => `hsl(${[...String(c)].reduce((a, x) => a * 31 + x.charCodeAt(0), 7) % 360} 58% 30%)`;
-const clock = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}); };
-const when = s => { if (!s) return ""; const d = new Date(String(s).length <= 10 ? s + "T00:00:00" : s); return isNaN(d) ? esc(s) : d.toLocaleString(undefined, {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}); };
-const hm = ms => { const m = Math.max(0, Math.round(ms / 60000)); return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"; };
+const col = c => `hsl(${[...c].reduce((a, x) => a * 31 + x.charCodeAt(0), 7) % 360} 52% 46%)`;
 const pf = p => p === "F" ? "Field" : p === "G" ? "Greenhouse" : p;
-const LS = {get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } },
-  set(k, v) { try { v === null || v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }};
-
-const SS = {get(k) { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch (e) { return null; } },
-  set(k, v) { try { v === null || v === undefined ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }};
-// The manager login now lives in this tab only (sessionStorage): a new tab starts signed out, and closing the tab ends the session.
-// The old shared copy in localStorage is removed so nobody is silently signed in as the previous user.
-LS.set("pm_session", null);
-
-/* ---------- network ---------- */
-const hdr = {"Content-Type":"text/plain;charset=utf-8"};
+let TOKEN = null, ME = null;   // board session: token from boardLogin (kept in localStorage so a reload stays signed in), and who is signed in
 async function call(url, opt) {
-  let t, ac = typeof AbortController === "function" ? new AbortController() : null, to = ac ? setTimeout(() => ac.abort(), 90000) : 0;
-  try { t = await (await fetch(url, ac ? {...opt, signal: ac.signal} : opt)).text(); } catch (e) { throw new Error(e && e.name === "AbortError" ? "The server took too long to answer. Press Refresh to try again." : "No connection to the server."); } finally { clearTimeout(to); }
-  let j; try { j = JSON.parse(t); } catch (e) { throw new Error("The server sent back a web page instead of data. Deploy the latest Code_prop.gs as a new version, then try again."); }
-  if (j.error) { if (/^AUTH:/.test(j.error) && M) exitManager("Manager session ended. Turn Manager mode on again."); throw new Error(j.error.replace(/^AUTH:\s*/, "")); }
-  return j;
+  let t; try { t = await (await fetch(url, opt)).text(); } catch (e) { throw new Error("No connection to the server."); }
+  let j; try { j = JSON.parse(t); } catch (e) { throw new Error("The server sent back a web page instead of data. Deploy the latest Code_pro.gs as a new version, then try again."); }
+  if (j.error) { if (/^AUTH:/.test(j.error) && TOKEN) signOut("Your session ended. Sign in again."); throw new Error(j.error.replace(/^AUTH:\s*/, "")); } return j;
 }
-async function get(p) { const go = () => call(API_URL + "?" + new URLSearchParams(p)); try { return await go(); } catch (e) { if (!/web page/.test(e.message)) throw e; await new Promise(r => setTimeout(r, 1200)); return go(); } }
-const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({...b, token: M ? M.token : undefined})});
+const hdr = {"Content-Type":"text/plain;charset=utf-8"};
+async function get(p) {   // reads: signed in, they go out as POST so the session token never sits in a URL
+  const go = () => TOKEN ? call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({...p, token:TOKEN})}) : call(API_URL + "?" + new URLSearchParams(p));
+  try { return await go(); } catch (e) { if (!/web page/.test(e.message)) throw e; await new Promise(r => setTimeout(r, 1200)); return go(); } }
+const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({...b, token:TOKEN})});
 
-/* ---------- state ---------- */
-let D = null, SNAP = null, MODE = "live", FORCED = false, SYNCING = false, OFFSET = 0, M = SS.get("pm_session"), T = localToday(), SEL = null, RS = {};
-let TAB = "waves", FILT = "all", CF = "", CREW = "worker", SQ = +LS.get("pm_sq") || 1.55, BUSY = 0, LAST = Date.now(), RI = [], CD = null, ERR = "";
-const PICK = new Set(), WPICK = new Set(), DRAFT = {}, LOADING = {}, RW = {};
-let RV = "reassigned", RU = "done", AUTOLOGIN = true;
-const nowMs = () => MODE === "live" ? Date.now() + OFFSET : (D ? D.now : Date.now());
-const canAct = () => !!M && MODE === "live";
-const ST = {occupied:{l:"In propagation", g:"●"}, ready:{l:"Transplant soon", g:"→"}, attention:{l:"Needs attention", g:"!"}, post:{l:"Post-transplant", g:"S"}, empty:{l:"Available", g:"○"}};
-const isMove = x => x.kind === "REASSIGN" || x.kind === "UNASSIGN" || (x.kind === "ASSIGN" && !!String(x.note || "").trim());
-const MOVEK = {REASSIGN:"Reassigned", UNASSIGN:"Removed", ASSIGN:"Added to team"};
-const WS = {IN_PROGRESS:"In progress", PAUSED:"Paused", ASSIGNED:"Assigned", IDLE:"Idle"};
-const KIND = {DIRECT_CLOSE:"Direct close", GATE_OVERRIDE:"Gate override", ACTIVITY_OVERRIDE:"Activity override", LEAF_OVERRIDE:"First-leaf override", ALERT_RESOLVED:"Alert resolved", ASSIGN:"Assigned", REASSIGN:"Reassigned", UNASSIGN:"Removed"};
-
-/* ---------- derived data ---------- */
-const runs = () => D ? D.runs.filter(r => !r.error) : [];
-const flat = () => runs().flatMap(r => r.waves.map(w => ({r, w})));
-const trackOf = r => { const s = String(r.propLocation || ""), i = s.lastIndexOf(" · "); return i >= 0 ? s.slice(i + 3) : (s || "Unassigned"); };
-const gateOk = g => (g.completed && g.verified) || g.overridden;
-const leafOk = w => !!w.leaf && (w.leaf.outcome === "PASS" || w.leaf.outcome === "OVERRIDDEN");
-const openAlerts = () => D ? D.alerts.filter(a => a.status === "OPEN") : [];
-const postOpen = r => { const g = (r.gates || []).filter(x => x.scope === "post-transplant"); return g.length > 0 && !g.every(gateOk); };
-function leafDue(w, t) { const ph = (w.phases || []).find(p => p.phase === "Nursery" && p.days > 0); return !!ph && t >= ph.start; }
-function wst(r, w, t) {   // [status, label] of one wave on date t
-  if (t >= w.plant) return postOpen(r) && t < add(w.plant, 30) ? ["post", "Post-transplant: bench sanitizing not verified"] : ["done", "Planted"];
-  if (t < w.sow) return ["pend", "Not in the room yet · sow in " + days(t, w.sow) + " d"];
-  const why = [], pre = (r.gates || []).filter(g => g.scope === "pre-sowing");
-  if (!w.init) why.push("Not initiated");
-  if (pre.some(g => !gateOk(g))) why.push("Bench not verified ready");
-  if (!r.direct) { if (w.leaf && w.leaf.outcome === "FAIL") why.push("First-leaf check FAILED"); else if (!leafOk(w) && leafDue(w, t)) why.push("First-leaf check due"); }
-  if (openAlerts().some(a => a.run_id === r.runId)) why.push("Stall alert open");
-  if (why.length) return ["attention", why.join(" · ")];
-  const left = days(t, w.plant), ph = (w.phases || []).find(p => p.start <= t && t < p.end);
-  return left <= 3 ? ["ready", "Transplant in " + left + " d"] : ["occupied", "In propagation" + (ph ? " · " + ph.phase : "")];
+let B = {runs: [], workers: []}, SEL = null, T = localToday(), RS = {}, FILTER = "", SQ = 1.55, PH = [], URG = false, QALL = false;
+let CAL = null, CL = "prop", CV = "month", CP = "", CM = localToday().slice(0, 7), CD = null;   // production calendar: data, layer, view, platform filter, month, selected day
+const OPENG = new Set(), DRAFT = {};   // open gap groups, and half-typed verify notes / override reasons (kept across re-renders)
+const when = s => { if (!s) return ""; const d = new Date(String(s).length <= 10 ? s + "T00:00:00" : s); return isNaN(d) ? esc(s) : d.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}); };
+const user = () => ME ? ME.name : "";
+function toast(m, bad) { const el = $("toast"); el.textContent = m; el.classList.remove("hidden"); el.style.background = bad ? "var(--bad)" : ""; clearTimeout(toast.t); if (m) toast.t = setTimeout(() => el.classList.add("hidden"), bad ? 6000 : 2500); else el.classList.add("hidden"); }
+const flat = () => B.runs.filter(r => !r.error).flatMap(r => r.waves.map(w => ({r, w})));
+function stat(r, w, t) {
+  if (t >= w.plant) return ["done", "Planted"];
+  const gatesOpen = r.acts.gates > 0 && r.acts.gatesOk < r.acts.gates;
+  if (!w.init) return t >= w.sow ? ["exc", "Overdue: not initiated"] : ["prop", `Not initiated · sow in ${days(t, w.sow)} d`];
+  if (t < w.sow) return ["init", `Initiated · sow in ${days(t, w.sow)} d`];
+  if (gatesOpen) return ["exc", "Gate activities unverified"];
+  const ph = (w.phases || []).find(p => p.start <= t && t < p.end);
+  return ["occ", r.direct ? "Direct-seeded, growing" : "In propagation" + (ph ? " · " + ph.phase : "")];
 }
-function roomItems(t) { const o = []; flat().forEach(({r, w}) => { if (!(w.trays > 0)) return; const [k, l] = wst(r, w, t); if (k === "pend" || k === "done") return; o.push({r, w, k, l, track: trackOf(r)}); }); return o; }
-const badge = (k, l) => `<span class="badge st-${k}">${ST[k].g} ${esc(l || ST[k].l)}</span>`;
-
-/* ---------- snapshot + sync ---------- */
-function saveSnap() {
-  const o = {saved: SNAP, data: D};
-  if (!LS.set("pm_snap", o)) LS.set("pm_snap", {saved: SNAP, data: {...D, alerts: D.alerts.slice(-30), assignLog: (D.assignLog || []).slice(0, 40), unverified: (D.unverified || []).slice(0, 60), mgrLog: D.mgrLog.slice(0, 20)}});
-}
-function loadSnap() { const s = LS.get("pm_snap"); if (s && s.data && s.data.runs) { D = s.data; SNAP = s.saved; return true; } return false; }
+let CALP = null;   // calendar request started alongside the board request, so the two server calls overlap instead of queueing
 async function load(quiet) {
-  if (!M) return;
-  if (MODE === "offline" && FORCED) return;
-  SYNCING = true; connBar();
+  if (!CAL && !CALP) { CALP = get({action:"calendar"}); CALP.catch(() => {}); }
+  try { B = await get({action:"board"}); $("conn").textContent = "Connected · " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}); $("conn").className = "conn"; $("err").classList.add("hidden"); render(); if (!CAL) loadCal(); }
+  catch (e) { $("conn").textContent = "Offline"; $("conn").className = "conn off"; $("err").textContent = e.message; $("err").classList.remove("hidden"); if (!quiet) toast(e.message, true); }
+}
+function render() { crops(); gaps(); room(); wavesList(); prof(); queue(); calendar(); kpis(); tabs(); }
+function crops() {
+  const G = B.gaps ? B.gaps.groups : [], codes = [...new Map([...B.runs.map(r => [r.crop, r.cropName]), ...G.map(g => [g.crop, g.cropName])]).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+  const runs = B.runs.filter(r => !FILTER || r.crop === FILTER), selRun = SEL && B.runs.find(r => r.runId === SEL.runId), selCrop = selRun ? selRun.crop : "";
+  const byCrop = new Map(); runs.forEach(r => { if (!byCrop.has(r.crop)) byCrop.set(r.crop, []); byCrop.get(r.crop).push(r); });
+  const runHtml = r => r.error ? `<div class="run"><b>${esc(r.cropName)}</b><div class="note">Run ${esc(r.runId)} could not be read: ${esc(r.error)}</div></div>` : `<div class="run"><div class="row" style="margin:0"><b>${pf(r.platform)}</b><span class="k">${esc(r.runId)}${/^(ADDITIONAL|SHORTFALL)/.test(r.runType || "") ? " · Shortfall Crop" + (r.shortfallYear ? " " + r.shortfallYear : "") : ""}</span></div>
+    <div class="k">${esc(r.location)} · activities ${r.acts.assigned}/${r.acts.total} assigned${r.acts.awaiting ? ` · <b>${r.acts.awaiting} awaiting verification</b>` : ""}</div>
+    <div class="chips">${r.waves.map(w => { const [k, l] = stat(r, w, T); return `<button type="button" class="chip s-${k} ${SEL && SEL.runId === r.runId && SEL.wave === w.wave ? "sel" : ""}" data-sel="${esc(r.runId)}|${w.wave}" title="${esc(l)}"><b>Wave ${w.wave}</b><br>${fmt(w.sow)} to ${fmt(w.plant)}</button>`; }).join("")}</div>
+    ${r.waves.some(w => !w.init) ? `<button type="button" data-init="${esc(r.runId)}|all">Initiate all waves</button>` : `<span class="badge s-init">All waves initiated</span>`}</div>`;
+  const grpHtml = ([c, l]) => { const k = "crop|" + c, nw = l.reduce((n, r) => n + (r.waves ? r.waves.length : 0), 0);
+    return `<details class="cg" data-ok="${esc(k)}" ${opn(k, !!FILTER || c === selCrop)}><summary>${esc(l[0].cropName)} (${esc(c)}) · ${l.length} run${l.length > 1 ? "s" : ""} · ${nw} wave${nw === 1 ? "" : "s"}</summary>${l.map(runHtml).join("")}</details>`; };
+  $("crops").innerHTML = `<h2>Crops and waves</h2><label class="k">Crop <select id="cf"><option value="">All crops</option>${codes.map(([c, n]) => `<option value="${esc(c)}" ${c === FILTER ? "selected" : ""}>${esc(n)} (${esc(c)})</option>`).join("")}</select></label>
+  <p class="k" style="margin:6px 0">Tap a crop to open its runs. Tap a wave to open it.</p>
+  ${byCrop.size ? [...byCrop.entries()].sort((a, b) => String(a[1][0].cropName).localeCompare(String(b[1][0].cropName))).map(grpHtml).join("") : `<p class="k">${FILTER ? "No runs for this crop yet. Its planned dates are listed under Planned, no run." : "No runs yet. Create one from Planned, no run below, or in the Propagation Engine."}</p>`}`;
+  $("cf").onchange = e => { FILTER = e.target.value; render(); };
+}
+const grp = key => B.gaps && B.gaps.groups.find(g => g.crop + "|" + g.platform === key);
+const gapSow = (g, d) => add(d, -g.lead), gapLive = i => T < i.date;   // a gap whose planting date has passed is listed but never raises a queue item
+function gapList(g) { return g.items.map(i => ({...i, sow: gapSow(g, i.date)})).filter(i => !URG || (gapLive(i) && days(T, i.sow) <= 30)); }
+function gapRow(g, i, key) {
+  const d = days(T, i.sow), live = gapLive(i), why = !live ? "Plant date passed" : d < 0 ? `Sow date passed ${-d} d ago` : d === 0 ? "Sow today" : `Sow in ${d} d`,
+    nr = i.near ? ` · run ${esc(i.near.runId)} already has a wave ${Math.abs(i.near.days)} d ${i.near.days < 0 ? "before" : "after"} this (${fmt(i.near.date)})` : "";
+  return `<div class="q"><span class="badge ${live && d <= 0 ? "s-exc" : "s-gap"}">Planned, no run</span><span class="n"><b>Plant ${fmt(i.date)}</b> <span class="k">${esc(i.slot)} · sow ${fmt(i.sow)} · ${why}${nr}</span></span>${g.error ? "" : `<button type="button" data-mk="${esc(key)}|${i.date}">Create run</button>`}</div>`;
+}
+function gaps() {
+  const el = $("gaps"); el.classList.remove("hidden");
+  if (!B.gaps) { el.innerHTML = `<h2>Planned, no run</h2><div class="note">The server did not send the season plan. Deploy the latest Code_pro.gs as a new version, then press Refresh.</div>`; return; }
+  const gs = B.gaps.groups.filter(g => !FILTER || g.crop === FILTER).map(g => ({g, l: gapList(g)})).filter(x => x.l.length),
+    total = gs.reduce((n, x) => n + x.l.length, 0), live = gs.reduce((n, x) => n + x.l.filter(gapLive).length, 0);
+  el.innerHTML = `<details data-ok="gapsAll" ${opn("gapsAll", false)}><summary>Planned, no run · ${total} shown</summary>
+  <p class="k">Planting dates in Planting_Plan and GH_Waves that no saved run lands on (matched by exact planting date): ${B.gaps.planned - B.gaps.covered} of ${B.gaps.planned} planned dates this season. Create a run from any of them.</p>
+  <label class="k chk"><input type="checkbox" id="urg" ${URG ? "checked" : ""}> Only sow dates within 30 days of ${fmt(T)}, or already passed</label>
+  <p><b>${total}</b> shown${FILTER ? " for this crop" : ""}${total > live ? `, ${total - live} with a planting date that has already passed` : ""}.</p>
+  ${gs.length ? gs.map(({g, l}) => { const key = g.crop + "|" + g.platform, nl = l.filter(gapLive), past = l.length - nl.length,
+    facts = [g.location, g.bed && "bed " + g.bed, g.error ? "" : g.direct ? "direct-seeded, no trays" : (g.trays || 0) + " trays per wave" + (g.trayCells ? ", " + g.trayCells + "-cell" : ""), g.window && "Oregon window " + g.window].filter(Boolean).map(esc).join(" · ");
+    return `<details class="gl" data-g="${esc(key)}" ${FILTER || OPENG.has(key) ? "open" : ""}><summary>${esc(g.cropName)} (${esc(g.crop)}) · ${pf(g.platform)} · ${l.length} planned, no run${past ? ` (${past} past)` : ""}${nl.length ? " · next plant " + fmt(nl[0].date) : ""}</summary>
+    ${facts ? `<div class="k">${facts}</div>` : ""}
+    ${g.error ? `<div class="note">${esc(g.error)}. Runs cannot be created for this crop until that is fixed.</div>` : ""}${(g.notes || []).map(n => `<div class="note">${esc(n)}</div>`).join("")}
+    ${!g.error && nl.length > 1 ? `<div class="row"><button type="button" class="alt" data-mkall="${esc(key)}">Create ${nl.length} runs, one per planting date</button></div>` : ""}
+    ${l.map(i => gapRow(g, i, key)).join("")}</details>`; }).join("") : `<p class="k">${URG ? "Nothing is due to sow soon without a run." : FILTER ? "Every planned date for this crop has a run." : "Every planned date has a run."}</p>`}</details>`;
+}
+function noRunNote() {   // trays that are planned for the room on day T but have no run yet (not counted in the occupancy figure)
+  if (!B.gaps) return "";
+  const hit = B.gaps.groups.filter(g => !g.error && g.trays > 0).map(g => ({g, n: g.items.filter(i => gapSow(g, i.date) <= T && T < i.date).length})).filter(x => x.n), trays = hit.reduce((n, x) => n + x.n * x.g.trays, 0);
+  return trays ? `<p class="k"><span class="badge s-gap">Planned, no run</span> ${trays} more trays are planned for the room on this day (${hit.map(x => esc(x.g.cropName) + (x.n > 1 ? " ×" + x.n : "")).join(", ")}). They are not in the count above.</p>` : "";
+}
+async function mkRuns(key, dates) {   // one saveRun per planting date (1 wave each), sequential so progress is visible and a failure stops cleanly
+  const g = grp(key); if (!g || !dates.length) return;
+  const btns = document.querySelectorAll("button"); btns.forEach(b => b.disabled = true); let made = 0;
   try {
-    const d = await get({action:"monitor", token:M.token});
-    D = d; OFFSET = d.now - Date.now(); MODE = "live"; SNAP = new Date().toISOString(); ERR = ""; saveSnap();
-    await freshRun();
-  } catch (e) {
-    ERR = /Unknown action/.test(e.message) ? "The server has no manager console yet. Deploy the latest Code_prop.gs as a new version, then press Sync now." : e.message;
-    if (!D) loadSnap();
-    if (D) MODE = "offline";
-    if (!quiet) toast(ERR, true);
-  } finally { SYNCING = false; }
-  render(true);
-}
-function goOffline() { if (!D && !loadSnap()) return toast("No snapshot saved on this device yet. Sync once while online.", true); MODE = "offline"; FORCED = true; render(); }
-function goLive() { FORCED = false; MODE = "live"; load(); }
-function connBar() {
-  const el = $("cbar"), age = SNAP ? Math.round((Date.now() - Date.parse(SNAP)) / 60000) : 0;
-  if (SYNCING) { el.className = "sync"; el.innerHTML = `<span class="dot"></span><b>Syncing…</b>`; return; }
-  if (MODE === "live") { el.className = ""; el.innerHTML = `<span class="dot"></span><b>LIVE</b><span>Synced ${esc(clock(SNAP))} · auto-sync every 60 s</span><span class="sp"></span><button class="alt sm" type="button" data-a="sync">Sync now</button><button class="alt sm" type="button" data-a="offline">Work offline</button>`; return; }
-  el.className = age > STALE_MIN ? "off stale" : "off";
-  el.innerHTML = `<span class="dot"></span><b>OFFLINE SNAPSHOT</b><span>${SNAP ? "Saved " + esc(clock(SNAP)) + " · " + age + " min old" : "No snapshot"} · read-only${FORCED ? "" : " · retrying automatically"}</span><span class="sp"></span><button class="alt sm" type="button" data-a="live">Go live</button>`;
+    for (const d of dates) {
+      toast(`Creating run ${made + 1} of ${dates.length} for ${g.cropName}, plant ${fmt(d)}… this can take up to a minute`);
+      await post({action:"saveRun", crop:g.crop, platform:g.platform, dob:d, waves:1, noDup:true, user:user() || "manager"});
+      made++; g.items = g.items.filter(x => x.date !== d); B.gaps.covered++;
+    }
+    toast(made + " run" + (made > 1 ? "s" : "") + " created. Initiate the waves to hand out activities.");
+  } catch (e) { toast((made ? made + " created, then stopped: " : "") + e.message, true); }
+  finally { B.gaps.groups = B.gaps.groups.filter(x => x.items.length); btns.forEach(b => b.disabled = false); render(); load(true); }
 }
 
-/* ---------- manager mode (PIN) ---------- */
-function openLogin() {
-  $("luw").innerHTML = `<input id="lu" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Worker ID" aria-label="Worker ID">`;
-  $("lp").value = ""; $("lerr").classList.add("hidden"); $("login").classList.remove("hidden"); setTimeout(() => $("lu").focus(), 0);
+/* ---------- Production calendar: sowing and transplant / direct-seeding dates, read from the workbook via ?action=calendar ---------- */
+async function loadCal() {
+  try { if (!CAL) { const c = JSON.parse(localStorage.getItem("aab_cal") || "null"); if (c && c.d && c.d.events) { CAL = c.d; calendar(); } } } catch (e) {}   // show the last calendar from this device at once, then refresh it below
+  try { CAL = await (CALP || get({action:"calendar"})); }
+  catch (e) { CAL = null; $("cal").innerHTML = `<h2>Production calendar</h2><div class="note">${esc(/Unknown action/.test(e.message) ? "The server does not have the calendar yet. Deploy the latest Code_pro.gs as a new version, then press Refresh." : e.message)}</div>`; return; }
+  CALP = null; try { if (CAL) localStorage.setItem("aab_cal", JSON.stringify({d: CAL})); } catch (e) {} calendar();
 }
-async function doLogin() {
-  const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) { $("lerr").textContent = "Enter your Worker ID and PIN."; return $("lerr").classList.remove("hidden"); }
-  $("lgo").disabled = true;
-  try { const r = await post({action:"boardLogin", user:u, pin:p, device:navigator.userAgent}); $("lp").value = "";
-    M = {token:r.token, name:r.user.name, role:r.user.role, id:r.user.workerId}; SS.set("pm_session", M); SS.set("pm_last", Date.now()); $("login").classList.add("hidden"); LAST = Date.now(); render(); toast("Manager mode on: " + M.name); load(true); }
-  catch (e) { $("lp").value = ""; $("lerr").textContent = e.message; $("lerr").classList.remove("hidden"); }
-  finally { $("lgo").disabled = false; }
+const CLAB = {prop: ["Sowing", "sowing", "sowings"], plant: ["Transplant / direct seeding", "transplant or direct seeding", "transplants and direct seedings"]};
+const calDate = (e, l) => l === "prop" ? e.sow : e.plant;
+const calVerb = (e, l) => l === "prop" ? "Sow " : e.method === "DIRECT_SEED" ? "Direct seed " : e.prop ? "Transplant " : "Plant ";
+function calEvents(l) {
+  if (!CAL) return [];
+  return CAL.events.filter(e => (l !== "prop" || e.prop) && (!CP || e.platform === CP) && (!FILTER || e.crop === FILTER)).map(e => ({e, d: calDate(e, l)}))
+    .sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : a.e.name.localeCompare(b.e.name));
 }
-function exitManager(msg) { const t = M && M.token; M = null; SS.set("pm_session", null); SS.set("pm_last", null); LS.set("pm_snap", null); D = null; SNAP = null; RS = {}; SEL = null; PICK.clear(); WPICK.clear(); if (t) { try { fetch(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({action:"logout", token:t})}).catch(() => {}); } catch (e) {} } render(true); openLogin(); if (msg) toast(msg); }
-function gate() {
-  if (MODE !== "live") { toast("Offline snapshot: changes are disabled. Go live first.", true); return false; }
-  if (!M) { toast("Turn on Manager mode (PIN) to do that.", true); openLogin(); return false; }
-  return true;
+function calDetail(e, l) {
+  if (l === "prop") return `${esc(e.crop)} · Germination ${e.g}d + Nursery ${e.n}d + Harden off ${e.h}d + Establish ${e.e}d · ${e.anchored ? "established by " + fmt(e.est) : "transplant " + fmt(e.plant)}`;
+  return `${esc(e.crop)} · ${esc(e.slot)} · ${esc(e.method)}${e.prop ? " · sown " + fmt(e.sow) : ""}`;
 }
-async function write(label, fn) {
-  BUSY++; document.body.classList.add("busy"); toast(label + "…");
-  try { return await fn(); } catch (e) { toast(e.message, true); return null; }
-  finally { BUSY--; if (!BUSY) document.body.classList.remove("busy"); }
+function calRow(x, l) {
+  return `<div class="ag"><span class="badge">${pf(x.e.platform)}</span><span class="n"><b>${esc(calVerb(x.e, l) + x.e.name)}</b><br><span class="k">${calDetail(x.e, l)}</span></span></div>`;
 }
-function applyRun(rs) {   // a write returns the run's fresh state: keep it, and mirror first-leaf outcomes into the board data
-  RS[rs.runId] = rs; const r = D && D.runs.find(x => x.runId === rs.runId);
-  if (r && r.waves && rs.leaf) r.waves.forEach(w => { w.leaf = rs.leaf[w.wave] || null; });
-  if (r && r.gates) r.gates = rs.activities.filter(a => a.scope !== "crop-wave").map(a => ({id:a.id, name:a.name, scope:a.scope, completed:a.completed, verified:a.verified, overridden:a.overridden, assignee:a.assignee || "", completedBy:a.completedBy || "", overrideReason:a.overrideReason || ""}));
+function calendar() {
+  const el = $("cal"); if (!CAL) return;
+  const all = calEvents(CL), mine = all.filter(x => x.d.slice(0, 7) === CM), mlab = new Date(CM + "-01T00:00:00Z").toLocaleDateString(undefined, {month:"long", year:"numeric", timeZone:"UTC"}),
+    by = {}; mine.forEach(x => (by[x.d] = by[x.d] || []).push(x));
+  const crops = new Set(mine.map(x => x.e.crop)).size, btn = (a, v, cur, l) => `<button type="button" class="${cur === v ? "on" : "alt"}" data-${a}="${v}">${l}</button>`;
+  let body;
+  if (CV === "month") {
+    const first = CM + "-01", dow = new Date(first + "T00:00:00Z").getUTCDay(), dim = new Date(Date.UTC(+CM.slice(0, 4), +CM.slice(5, 7), 0)).getUTCDate(), n = Math.ceil((dow + dim) / 7) * 7, start = add(first, -dow), td = localToday();
+    let g = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => `<div class="h">${d}</div>`).join("");
+    for (let i = 0; i < n; i++) {
+      const d = add(start, i), inM = d.slice(0, 7) === CM, l = inM ? by[d] || [] : [], show = l.length > 3 ? 2 : l.length;
+      g += `<div class="${inM ? "" : "o"} ${d === td ? "tdy" : ""} ${d === CD ? "sd" : ""}"><button type="button" class="dn" data-cd="${d}" aria-label="${fmt(d)}${l.length ? ", " + l.length + " " + CLAB[CL][2] : ""}">${+d.slice(8)}</button>`
+        + l.slice(0, show).map(x => `<button type="button" class="ev" style="border-left-color:${col(x.e.crop)}" data-cd="${d}" title="${esc(calVerb(x.e, CL) + x.e.name + " · " + pf(x.e.platform))}">${esc(calVerb(x.e, CL) + x.e.name)}</button>`).join("")
+        + (l.length > show ? `<button type="button" class="ev more" data-cd="${d}">+${l.length - show} more</button>` : "") + `</div>`;
+    }
+    const sel = CD && CD.slice(0, 7) === CM ? by[CD] || [] : null;
+    body = `<div class="cal">${g}</div>${CD ? `<h3>${new Date(CD + "T00:00:00Z").toLocaleDateString(undefined, {weekday:"long", month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})}</h3>${sel && sel.length ? sel.map(x => calRow(x, CL)).join("") : `<p class="k">Nothing on this day.</p>`}` : `<p class="k">Click a day to see its details.</p>`}`;
+  } else {
+    body = Object.keys(by).length ? Object.keys(by).sort().map(d => `<h3>${new Date(d + "T00:00:00Z").toLocaleDateString(undefined, {weekday:"long", month:"short", day:"numeric", year:"numeric", timeZone:"UTC"})}</h3>${by[d].map(x => calRow(x, CL)).join("")}`).join("") : `<p class="k">No ${CLAB[CL][2]} in ${mlab}.</p>`;
+  }
+  el.innerHTML = `<div class="row noprint" style="margin-top:0"><h2 style="margin:0">Production calendar</h2><span class="sp"></span>
+    ${["prop", "plant"].map(v => btn("cl", v, CL, CLAB[v][0])).join("")}</div>
+  <div class="row noprint">${btn("cv", "month", CV, "Month")}${btn("cv", "agenda", CV, "Agenda")}<span class="k">|</span>${btn("cp", "", CP, "All")}${btn("cp", "F", CP, "Field")}${btn("cp", "G", CP, "Greenhouse")}<span class="sp"></span>
+    <button type="button" class="alt" data-ccsv="1">Download CSV</button><button type="button" class="alt" data-cprint="1">Print</button></div>
+  <div class="row"><button type="button" class="alt noprint" data-cm="-1" aria-label="Previous month">‹</button><h3 style="margin:0">${mlab}</h3><span class="k">${mine.length} ${CLAB[CL][mine.length === 1 ? 1 : 2]}${mine.length ? " across " + crops + " crop" + (crops === 1 ? "" : "s") : ""}</span><button type="button" class="alt noprint" data-cm="1" aria-label="Next month">›</button><button type="button" class="alt noprint" data-cm="0">Today</button></div>
+  ${body}
+  <p class="k">Read live from the workbook: every planting comes from Planting_Plan, plus any GH_Waves date it does not list. Sow date = planting date minus pre-planting days (germination + nursery + harden-off + establish) from Crop_Parameters. Transplant date = the planting date; direct-seeded crops are seeded on it, and crops whose DOB is the sowing date sow on it.${FILTER ? " Filtered to the crop selected under Crops and waves." : ""}</p>`;
 }
-async function freshRun() {   // re-read the open run on every sync so worker completions show here; other runs reload when opened
-  const keep = SEL && SEL.runId; Object.keys(RS).forEach(id => { if (id !== keep) delete RS[id]; });
-  if (!keep || LOADING[keep]) return;
-  try { const rs = await get({action:"run", runId:keep}); if (rs && rs.activities) applyRun(rs); } catch (e) {}
-}
-async function loadRun(id) { LOADING[id] = 1; try { RS[id] = await get({action:"run", runId:id}); } catch (e) { RS[id] = {runId:id, activities:[], leaf:{}, error:e.message}; toast(e.message, true); } delete LOADING[id]; render(true); }
-
-/* ---------- crew ---------- */
-function crewData() {
-  const byId = new Map(), byName = new Map(), all = [];
-  const mk = (id, name, role) => { const e = {id:String(id || ""), name, role:role || "", sess:[], tasks:[]}; all.push(e); if (e.id) byId.set(e.id, e); byName.set(String(name).toLowerCase(), e); return e; };
-  if (!D) return all;
-  D.workers.forEach(w => mk(w.id, w.name, w.role));
-  const find = (id, name) => (id && byId.get(String(id))) || byName.get(String(name || "").toLowerCase()) || (name ? mk("", name, "") : null);
-  D.sessions.forEach(s => { const e = find(s.workerId, s.by); if (e) e.sess.push(s); });
-  D.tasks.filter(t => !t.done).forEach(t => t.team.forEach((n, i) => { const e = find(t.teamIds[i], n); if (e) e.tasks.push(t); }));
-  all.forEach(e => { e.st = e.sess.some(s => !s.pausedAt) ? "IN_PROGRESS" : e.sess.length ? "PAUSED" : e.tasks.length ? "ASSIGNED" : "IDLE"; });
-  const pr = {PAUSED:0, IN_PROGRESS:1, ASSIGNED:2, IDLE:3};
-  return all.sort((a, b) => pr[a.st] - pr[b.st] || a.name.localeCompare(b.name));
-}
-const netMs = (s, now) => (s.pausedAt ? Date.parse(s.pausedAt) : (now || nowMs())) - Date.parse(s.startedAt) - (+s.pausedSec || 0) * 1000;
-const tNet = s => `<b data-timer="net" data-start="${esc(s.startedAt)}" data-ps="${+s.pausedSec || 0}" data-pa="${esc(s.pausedAt)}">${hm(netMs(s))}</b>`;
-const tSince = iso => `<b data-timer="since" data-since="${esc(iso)}">${hm(nowMs() - Date.parse(iso))}</b>`;
-function tick() { const now = nowMs(); document.querySelectorAll("[data-timer]").forEach(el => { const d = el.dataset; el.textContent = d.timer === "net" ? hm(netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now)) : hm(now - Date.parse(d.since)); }); }
-function sessLine(s) {
-  const stall = /stall/i.test(s.pauseReason);
-  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activityId)} ${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}${refOf(s.activityId).description ? `<br><span class="k">${esc(refOf(s.activityId).description)}</span>` : ""}</div>`;
-}
-
-/* ---------- header, KPIs ---------- */
-function header() {
-  $("bMgr").textContent = M ? M.name + " · Sign out" : "Sign in"; $("bMgr").className = M ? "" : "alt"; document.body.classList.toggle("out", !M); $("bAddAct").classList.toggle("hidden", !canAct());
-  $("bTheme").textContent = document.documentElement.dataset.theme === "night" ? "Sun" : "Night";
-  document.documentElement.style.setProperty("--hh", $("top").offsetHeight + "px");
-}
-function kpis() {
-  if (!D) { $("kpi").innerHTML = ""; return; }
-  const cap = Math.floor(BAY_SQFT / SQ), inR = RI.filter(i => i.k !== "post").reduce((n, i) => n + i.w.trays, 0), att = RI.filter(i => i.k === "attention").length;
-  const aw = runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0), st = openAlerts().length, on = D.sessions.filter(s => !s.pausedAt).length, pa = D.sessions.length - on, rc = (D.assignLog || []).filter(x => isMove(x) && Date.parse(x.ts) > nowMs() - 7 * 864e5).length;
-  const k = (a, big, lab, hot, tab) => `<button type="button" class="kp ${hot ? "hot" : ""}" ${a}><b>${big}</b>${lab}</button>`;
-  $("kpi").innerHTML = k('data-a="filt" data-f="all"', `${inR}<span class="k"> / ${cap}</span>`, "Trays in room (" + fmt(T) + ")", inR > cap)
-    + k('data-a="kpiatt"', att, "Waves needing attention", att > 0) + k('data-a="tab" data-tab="review" data-rv="unverified" data-ru="done"', aw, "Done, awaiting verification", aw > 0) + k('data-a="tab" data-tab="review" data-rv="reassigned"', rc, "Reassigned (7 days)", false)
-    + k('data-a="tab" data-tab="watch"', st, "Open stall alerts", st > 0) + k('data-a="tab" data-tab="crew"', on + (pa ? ` <span class="k">+${pa} paused</span>` : ""), "Sessions running", false);
+function calCsv() {
+  const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"', rows = calEvents(CL);
+  const head = ["Date", "Layer", "Crop", "Code", "Platform", "Plan slot", "Method", "Sow date", "Transplant / direct seeding date"];
+  const csv = [head.map(q).join(","), ...rows.map(({e, d}) => [d, CLAB[CL][0], e.name, e.crop, pf(e.platform), e.slot, e.method, e.prop ? e.sow : "", e.plant].map(q).join(","))].join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], {type: "text/csv"})); a.download = `production-calendar-${CL}${CP ? "-" + CP : ""}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-/* ---------- matrix (left) ---------- */
-function matrix() {
-  const el = $("left"); if (!D) { el.innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
-  const cap = Math.max(1, Math.floor(BAY_SQFT / SQ)), inR = RI.filter(i => i.k !== "post"), post = RI.filter(i => i.k === "post");
-  const tIn = inR.reduce((n, i) => n + i.w.trays, 0), tPost = post.reduce((n, i) => n + i.w.trays, 0), free = Math.max(0, cap - tIn - tPost), over = tIn + tPost - cap;
-  const cnt = {all:tIn + tPost + free, empty:free, occupied:RI.filter(i => i.k === "occupied" || i.k === "ready").reduce((n, i) => n + i.w.trays, 0), attention:RI.filter(i => i.k === "attention").reduce((n, i) => n + i.w.trays, 0), post:tPost};
-  const flt = [["all", "All"], ["empty", "Available"], ["occupied", "Occupied"], ["attention", "Needs attention"], ["post", "Post-transplant"]];
-  const vis = RI.filter(i => (FILT === "all" || (FILT === "occupied" ? i.k === "occupied" || i.k === "ready" : FILT === i.k)) && (!CF || i.r.crop === CF));
-  const crops = [...new Map(runs().map(r => [r.crop, r.cropName])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1])));
-  const tracks = [...new Set(vis.map(i => i.track))].sort();
-  const sel = (i, n) => SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave;
-  const grp = i => { const c = col(i.r.crop), s = sel(i);
-    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> <span class="wv">W${i.w.wave}</span> · ${i.w.trays} trays ${badge(i.k, i.l)} ${progBadge(i.r)}</button>
-    <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" title="${esc(i.r.cropName)} W${i.w.wave} · tray ${n + 1} of ${i.w.trays}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}"><b>W${i.w.wave}</b><small>T${n + 1}</small></button>`).join("")}</div></div>`; };
-  el.innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Propagation room</h2><span class="sp"></span>
-    <button class="alt sm" type="button" data-a="day" data-d="-1" aria-label="Previous day">‹</button><input type="date" id="day" value="${T}" aria-label="Date"><button class="alt sm" type="button" data-a="day" data-d="1" aria-label="Next day">›</button><button class="alt sm" type="button" data-a="day" data-d="0">Today</button></div>
-  <p><b>${tIn}</b> of ${cap} trays in the room on ${fmt(T)}${tPost ? ` · <b>${tPost}</b> bench slots awaiting sanitizing` : ""} · ${free} available${over > 0 ? ` · <b style="color:var(--bad)">${over} over capacity</b>` : ""}</p>
-  <div class="chips" role="group" aria-label="Status filter">${flt.map(([v, l]) => `<button type="button" class="${FILT === v ? "on" : "alt"}" data-a="filt" data-f="${v}">${l} · ${cnt[v]}</button>`).join("")}</div>
-  <div class="row"><label class="k">Crop <select id="cf"><option value="">All crops</option>${crops.map(([c, n]) => `<option value="${esc(c)}" ${c === CF ? "selected" : ""}>${esc(n)} (${esc(c)})</option>`).join("")}</select></label>
-    <label class="k">Sq ft per tray <input type="number" id="sq" min="0.5" step="0.05" value="${SQ}" style="width:90px"></label></div>
-  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave), n = l.reduce((s, i) => s + i.w.trays, 0);
-    return `<div class="trk"><h3 style="margin:0">Track ${esc(t)}</h3><span class="k">${n} trays shown</span></div>${l.map(grp).join("")}`; }).join("")}
-  ${(FILT === "all" || FILT === "empty") && !CF ? `<div class="trk"><h3 style="margin:0">Available benches</h3><span class="k">${free} tray slots free in Bay 3</span></div><div class="cells">${Array.from({length:Math.min(free, 600)}, () => `<span class="cell e"></span>`).join("")}</div>` : ""}
-  ${!vis.length && FILT !== "empty" ? `<p class="k">Nothing matches this filter on ${fmt(T)}.</p>` : ""}
-  <div class="leg"><span><i style="background:#555"></i>In propagation ●</span><span><i style="background:#555;border-color:var(--warnb)"></i>Needs attention !</span><span><i style="background:#555;box-shadow:0 0 0 2px var(--acc)"></i>Transplant ≤ 3 d →</span><span><i style="background:repeating-linear-gradient(45deg,#7d8780 0 4px,#d4dad6 4px 8px)"></i>Post-transplant S</span><span><i style="border-style:dashed"></i>Available</span></div>
-  <p class="k">Capacity = ${BAY_SQFT} sq ft Bay 3 bench limit (Infra_Field) ÷ sq ft per tray. Tray colors are crops. Each block is one wave (W1, W2 …) and each tray shows its wave and tray number (W2 T3 = wave 2, tray 3). Tap a block or a tray to open that wave. Post-transplant slots stay held until bench sanitizing (ACT-607) is verified or overridden.</p>`;
+/* ---------- Team: workers in USERS, add a worker, reset a PIN, total labor hours. Managers only (signed in). ---------- */
+let TM = null, TNOTE = "";   // worker list + total labor hours from the server, and the one-time PIN notice
+function team() {
+  const el = $("team"); if (el.classList.contains("hidden")) return;
+  el.innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Team</h2><span class="sp"></span><button type="button" class="alt" data-tload="1">Reload</button><button type="button" class="alt" data-tclose="1">Close</button></div>
+  ${TNOTE ? `<div class="note">${TNOTE}</div>` : ""}
+  ${!TM ? `<p class="k">Press Reload to load the team.</p>` : `<div class="grid"><div><span class="k">Total labor hours</span><b>${(+TM.totalLaborHours || 0).toLocaleString(undefined, {maximumFractionDigits: 2})} h</b></div></div>
+  <h3>Add worker</h3>
+  <div class="tf"><label class="k">Name<input id="tn" maxlength="60" placeholder="e.g. Maria Lopez" autocomplete="off"></label>
+    <label class="k">Worker ID (optional)<input id="ti" maxlength="30" placeholder="auto from name" autocomplete="off"></label>
+    <label class="k">PIN (optional, 4-8 digits)<input id="tp" inputmode="numeric" maxlength="8" placeholder="blank = generate" autocomplete="off"></label>
+    <label class="k">Role<select id="tr"><option>Worker</option><option>Manager</option></select></label>
+    <button type="button" data-tadd="1">Add worker</button></div>
+  <div class="tw"><table><tr><th>Name</th><th>ID</th><th>Role</th><th>Status</th><th>PIN</th><th></th></tr>
+  ${TM.workers.map(w => `<tr><td>${esc(w.name)}</td><td>${esc(w.id)}</td><td>${esc(w.role)}</td><td>${esc(w.status)}</td><td>${w.pinSet ? "PIN set" : "No PIN"}</td><td>${String(w.role).toLowerCase() === "founder" ? `<span class="k">Founder only</span>` : `<button type="button" class="alt" data-treset="${esc(w.id)}">Reset PIN</button>`}</td></tr>`).join("")}</table></div>`}`;
+}
+async function loadTeam() {
+  try { TM = await post({action:"team"}); TNOTE = ""; team(); } catch (e) { toast(e.message, true); }
+}
+async function teamAct(body, b) {   // add / reset: the server returns the refreshed list
+  b.disabled = true;
+  try { const r = await post(body); TM = r.team;
+    const x = r.added || r.reset, was = r.added ? "added" : "PIN reset";
+    TNOTE = x.pin ? `${esc(x.name)} (${esc(x.id)}) ${was}. New PIN: <b>${esc(x.pin)}</b>. It is shown once and cannot be looked up later, so hand it over now.` : `${esc(x.name)} (${esc(x.id)}) ${was} with the PIN you set.`;
+    team(); load(true); }
+  catch (e) { b.disabled = false; toast(e.message, true); }
 }
 
-/* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
-const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? (q.waveOk ? "In progress · this wave verified, other waves not finished" : "In progress") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.join(", ") : "") : a.assignee ? "Assigned" : "Not assigned"; };
-/* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
+/* ---------- Labor Hours: closed work sessions from the permanent ledger (FIELD_ACTIVITY_LOG, via the read-only ?action=log feed). ---------- */
+let LAB = null, LB = {show: "7", from: "", to: "", view: "worker"};   // LAB = effective ledger entries; LB = date range, preset and view
+const LSH = {"7": "Last 7 days", "30": "Last 30 days", all: "All time"}, LVW = {worker: "By worker", activity: "By activity", sessions: "All sessions"}, NOWK = "No worker recorded";
+const ldate = s => { s = String(s || ""); if (s.length <= 10) return s; const d = new Date(s); return isNaN(d) ? s.slice(0, 10) : new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const hm = h => { const m = Math.round(h * 60); return Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0"); };
+function labPreset() {
+  const t = localToday(), ds = (LAB || []).map(x => x.d).filter(Boolean).sort();
+  if (LB.show === "7") { LB.from = add(t, -6); LB.to = t; } else if (LB.show === "30") { LB.from = add(t, -29); LB.to = t; }
+  else if (LB.show === "all") { LB.from = ds[0] || t; LB.to = ds.length && ds[ds.length - 1] > t ? ds[ds.length - 1] : t; }
+}
+async function loadLab() {
+  try { const r = await get({action:"log"});
+    LAB = r.entries.filter(x => !x.correctedBy).map(x => ({id: x.log_id, d: ldate(x.closed_at || x.started_at), at: x.closed_at || x.started_at, h: Number(x.labor_hours) || 0, crop: x.crop_code, wave: x.wave,
+      act: String(x.activity_name || x.activity_id || "Unnamed activity").trim(), who: String(x.workers || "").split(/[;,]/).map(n => n.trim()).filter(Boolean)}));
+    labPreset(); labor(); }
+  catch (e) { LAB = null; $("lab").innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Labor Hours</h2><span class="sp"></span><button type="button" class="alt" data-lclose="1">Close</button></div><div class="note">${esc(e.message)}</div>`; }
+}
+function labGroups(es, view) {   // a session with several workers splits its hours equally between them, so the grand total always equals the ledger total
+  const top = new Map(), a = x => view === "worker" ? x.w : x.act, b = x => view === "worker" ? x.act : x.w;
+  es.forEach(e => (e.who.length ? e.who : [NOWK]).forEach(w => { const x = {w, act: e.act, h: e.h / Math.max(1, e.who.length), id: e.id}, k = a(x);
+    const g = top.get(k) || {key: k, ids: new Set(), h: 0, subs: new Map()}; top.set(k, g); g.ids.add(x.id); g.h += x.h;
+    const sg = g.subs.get(b(x)) || {key: b(x), ids: new Set(), h: 0}; g.subs.set(b(x), sg); sg.ids.add(x.id); sg.h += x.h; }));
+  const srt = (p, q) => q.h - p.h || q.ids.size - p.ids.size || String(p.key).localeCompare(q.key);
+  return [...top.values()].sort(srt).map(g => ({key: g.key, n: g.ids.size, h: g.h, subs: [...g.subs.values()].sort(srt).map(x => ({key: x.key, n: x.ids.size, h: x.h}))}));
+}
+function labView() {
+  const es = LAB.filter(x => x.d >= LB.from && x.d <= LB.to), tot = es.reduce((n, x) => n + x.h, 0);
+  if (LB.view === "sessions") { const l = es.slice().sort((p, q) => String(q.at).localeCompare(String(p.at))); return {es, tot, head: ["Date", "Worker", "Activity", "Hours (h:mm)", "Hours (decimal)"], csv: ["Closed at", "Worker", "Activity", "Crop", "Wave", "Hours (h:mm)", "Hours (decimal)"],
+    rows: l.map(x => ({c: [fmt(x.d), x.who.join(", ") || NOWK, x.act, hm(x.h), x.h.toFixed(2)], r: [x.at, x.who.join(", ") || NOWK, x.act, x.crop, x.wave, hm(x.h), x.h.toFixed(2)]})),
+    total: ["Total", "", `${es.length} session${es.length === 1 ? "" : "s"}`, hm(tot), tot.toFixed(2)]}; }
+  const g = labGroups(es, LB.view), w = LB.view === "worker", rows = [];
+  g.forEach(x => { rows.push({cls: "grp", c: [x.key, x.n, hm(x.h), x.h.toFixed(2)], r: w ? [x.key, "", x.n, hm(x.h), x.h.toFixed(2)] : ["", x.key, x.n, hm(x.h), x.h.toFixed(2)]});
+    x.subs.forEach(y => rows.push({cls: "sub", c: [y.key, y.n, hm(y.h), y.h.toFixed(2)], r: w ? [x.key, y.key, y.n, hm(y.h), y.h.toFixed(2)] : [y.key, x.key, y.n, hm(y.h), y.h.toFixed(2)]})); });
+  return {es, tot, head: [w ? "Worker / activity" : "Activity / worker", "Sessions", "Hours (h:mm)", "Hours (decimal)"], csv: ["Worker", "Activity", "Sessions", "Hours (h:mm)", "Hours (decimal)"], rows, total: ["Total", es.length, hm(tot), tot.toFixed(2)]};
+}
+function labor() {
+  const el = $("lab"); if (el.classList.contains("hidden") || !LAB) return;
+  const btn = (a, v, cur, l) => `<button type="button" class="${cur === v ? "on" : "alt"}" data-${a}="${v}">${l}</button>`, bad = LB.from > LB.to, v = bad ? null : labView();
+  el.innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Labor Hours</h2><span class="sp"></span><button type="button" class="alt" data-lload="1">Reload</button><button type="button" class="alt" data-lclose="1">Close</button></div>
+  <div class="row"><label class="k">From <input type="date" id="lf" value="${LB.from}"></label><label class="k">To <input type="date" id="lt" value="${LB.to}"></label>
+    <span class="k">Show</span>${Object.keys(LSH).map(k => btn("lshow", k, LB.show, LSH[k])).join("")}</div>
+  <div class="row">${Object.keys(LVW).map(k => btn("lview", k, LB.view, LVW[k])).join("")}<span class="sp"></span><button type="button" class="alt" data-lcsv="1" ${v && v.rows.length ? "" : "disabled"}>Download CSV</button></div>
+  ${bad ? `<div class="note">The From date is after the To date.</div>` : `<p><b>${v.tot.toLocaleString(undefined, {maximumFractionDigits: 2})} h</b> total labor hours · ${v.es.length} session${v.es.length === 1 ? "" : "s"} from ${fmt(LB.from)} to ${fmt(LB.to)}</p>
+  ${v.rows.length ? `<div class="tw"><table class="lt"><tr>${v.head.map(h => `<th>${h}</th>`).join("")}</tr>${v.rows.map(r => `<tr class="${r.cls || ""}">${r.c.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}<tr class="tot">${v.total.map(c => `<td>${esc(c)}</td>`).join("")}</tr></table></div>` : `<p class="k">No closed sessions in this range.</p>`}`}`;
+}
+function labCsv() {
+  const v = labView(), q = x => '"' + String(x ?? "").replace(/"/g, '""') + '"', csv = [v.csv.map(q).join(","), ...v.rows.map(r => r.r.map(q).join(",")), (v.csv.length === 7 ? ["Total", "", "", "", "", hm(v.tot), v.tot.toFixed(2)] : ["Total", "", v.es.length, hm(v.tot), v.tot.toFixed(2)]).map(q).join(",")].join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], {type: "text/csv"})); a.download = `labor-hours-${LB.view}-${LB.from}-to-${LB.to}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+let TRAY = null, CELLS = [], CAP = 516;
+function busiest() {
+  const all = flat().filter(x => x.w.trays > 0); if (!all.length) return null;
+  const lo = all.reduce((a, x) => x.w.sow < a ? x.w.sow : a, "9999"), hi = all.reduce((a, x) => x.w.plant > a ? x.w.plant : a, "0000"); let best = null;
+  for (let t = lo; t < hi; t = add(t, 1)) { let n = 0; all.forEach(x => { if (x.w.sow <= t && t < x.w.plant) n += x.w.trays; }); if (!best || n > best.n) best = {n, t}; }
+  return best;
+}
+function trayInfo() {
+  const c = TRAY != null && CELLS[TRAY]; if (!c) return `<p class="k">Click a tray to see what is in it.</p>`;
+  const {r, w, i} = c, [, l] = stat(r, w, T), ph = (w.phases || []).find(p => p.start <= T && T < p.end), per = w.material && w.trays ? Math.round(w.material / w.trays) : null;
+  return `<div class="td" style="border-left:6px solid ${col(r.crop)}"><b>Tray ${i} of ${w.trays} · ${esc(r.cropName)} (${esc(r.crop)}) · wave ${w.wave}</b>
+    <span>Holds: ${r.trayCells ? r.trayCells + "-cell plug tray" : "tray"}${per ? ", about " + per.toLocaleString() + " seeds sown" : ""}</span>
+    <span>Stage: ${esc(l)}${ph ? " · day " + (days(ph.start, T) + 1) + " of " + ph.days + ", phase ends " + fmt(ph.end) : ""}</span>
+    <span>Sown ${fmt(w.sow)} · transplants ${fmt(w.plant)} (${days(T, w.plant)} days from ${fmt(T)})</span>
+    <span>Goes to: ${esc(r.location)}${r.bed ? ", bed " + esc(r.bed) : ""}</span><span class="k">Room position ${TRAY + 1} of ${CAP} · run ${esc(r.runId)}</span></div>`;
+}
+let RFILT = "all", RCF = "";   // room: status filter and crop filter
+const trackOf = r => { const s = String(r.propLocation || ""), i = s.lastIndexOf(" · "); return i >= 0 ? s.slice(i + 3) : (s || "Unassigned"); };
 let WV = null;   // wave the open panel shows: activities are shared by the run, but each worker's portion is submitted and verified per wave
 function actKind(a, w) {   // {k: done | wait | prog | as | un, sub, tot}: done = every assigned worker's portion verified by the manager
   const S = a.sessions || [], P = a.portions || [], wv = w || WV, crop = a.scope === "crop-wave";
   if (a.overridden) return {k: "done"};
   const p = crop ? (wv ? P.find(x => x.wave === wv.wave) : null) : (P.find(x => x.cleared) || P[0]);
   if (p) { const rq = p.workers.filter(x => x.required), L = rq.length ? rq : p.workers, sub = L.filter(x => x.submitted).length, tot = L.length, ver = L.filter(x => x.verified).length, miss = L.filter(x => !x.submitted).map(x => x.name);
-    if (p.cleared) return crop && !a.cleared ? {k: "prog", sub, tot, ver, miss, waveOk: true} : {k: "done", sub, tot, ver, miss}; if (tot && sub >= tot) return {k: "wait", sub, tot, ver, miss}; return {k: "prog", sub, tot, ver, miss}; }
+    if (p.cleared) return {k: "done", sub, tot, ver, miss}; if (tot && sub >= tot) return {k: "wait", sub, tot, ver, miss}; return {k: "prog", sub, tot, ver, miss}; }
   if (!P.length && a.completed) return {k: a.verified ? "done" : "wait"};   // closed directly by a manager
   if (S.some(s => !crop || !wv || Number(s.wave) === wv.wave)) return {k: "prog", sub: 0, tot: (a.assignees || []).length};
   return {k: a.assignee ? "as" : "un"};
@@ -358,28 +435,29 @@ async function doDropWorker(id, who) {   // takes a worker who did not do the ta
 }
 async function doReassignWorker(id, who) {   // hands ONE worker's seat on an activity to another worker; everyone else on the team is untouched
   const c = cur(); if (!c || !c.rs) return; const a = c.rs.activities.find(x => x.id === id); if (!a) return;
-  const sk = dk("rt", c.r.runId, id, who), nk = dk("dn", c.r.runId, id, who), to = D.workers.find(w => String(w.id) === String(DRAFT[sk] || "")), note = (DRAFT[nk] || "").trim();
+  const sk = dk("rt", c.r.runId, id, who), nk = dk("dn", c.r.runId, id, who), to = B.workers.find(w => String(w.id) === String(DRAFT[sk] || "")), note = (DRAFT[nk] || "").trim();
   const team = a.assignees || []; if (!team.length || team.some(x => !x.id)) return toast("This team has a name without a worker ID. Use the full Reassign editor instead.", true);
   if (!to) return toast("Choose who takes over " + who + "'s portion first.", true);
   if (!note) return toast("Write why " + who + " is coming off this task first. It is required and is kept in the trail.", true);
   const busy = (a.sessions || []).some(s => s.by === who);
-  if (!confirm(`Reassign ${who}'s portion of ${id} ${a.name} to ${to.name}?\n\nThis applies to every wave of run ${c.r.runId}. Anyone who already submitted keeps their verified work.\nBy: ${M.name}\nNote: ${note}` + (busy ? `\n\n${who} is mid-session on this activity and can still close it.` : ""))) return;
+  if (!confirm(`Reassign ${who}'s portion of ${id} ${a.name} to ${to.name}?\n\nThis applies to every wave of run ${c.r.runId}. Anyone who already submitted keeps their verified work.\nBy: ${ME.name}\nNote: ${note}` + (busy ? `\n\n${who} is mid-session on this activity and can still close it.` : ""))) return;
   const rs = await write("Reassigning " + who + " to " + to.name, () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:team.map(x => x.name === who ? String(to.id) : String(x.id)), note}));
   if (rs) { delete DRAFT[sk]; delete DRAFT[nk]; } done(rs, who + " → " + to.name + " on " + id);
 }
 function portNote(a) {   // each worker's own portion: working, submitted, verified
   if (a.overridden) return "";
   const P = a.portions || [], crop = a.scope === "crop-wave", S = a.sessions || [];
-  const lines = P.filter(p => !crop || !WV || p.wave === WV.wave).map(p => (crop ? "W" + p.wave + ": " : "") + p.workers.map(x => esc(x.name) + (x.verified ? " ✓ verified" + (S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · ⚠ session still open" : "") : x.submitted ? " · submitted, awaiting verification" : S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · working" : x.required ? " · not submitted" : "")).join("; "));
+  const lines = P.filter(p => !crop || !WV || p.wave === WV.wave).map(p => (crop ? "W" + p.wave + ": " : "") + p.workers.map(x => esc(x.name) + (x.verified ? " ✓ verified" : x.submitted ? " · submitted, awaiting verification" : S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · working" : x.required ? " · not submitted" : "")).join("; "));
   return lines.length ? `<div class="d k">${lines.join("<br>")}</div>` : S.length ? `<div class="d k">Working now: ${S.map(s => esc(s.by) + (crop ? " W" + s.wave : "")).join(", ")}</div>` : "";
 }
+const awWave = r => r.waves.find(w => w.wave === r.acts.awaitWave) || r.waves[0];   // the wave that holds submitted, unverified work
 function portBox(a, r) {   // manager audit: verify each worker's submitted portion on its own
   const crop = a.scope === "crop-wave", P = (a.portions || []).filter(p => !crop || !WV || p.wave === WV.wave); if (!P.length) { const o = crop ? (a.portions || []).filter(p => p.workers.some(x => x.submitted && !x.verified)).map(p => p.wave) : []; return o.length ? `<div class="d"><span class="badge wait">! Submitted on ${o.length > 1 ? "waves" : "wave"} ${o.join(", ")}, not on the wave you have open</span> ${o.slice(0, 5).map(n => `<button type="button" class="alt sm" data-sel="${esc(r.runId)}|${n}">Open wave ${n}</button>`).join(" ")}</div>` : ""; }
   const q = x => x.qty !== "" && x.qty != null ? " · " + esc(x.qty) + " " + esc(x.unit) : "";
   return `<div class="d"><b>Worker portions</b> <span class="k">each must be verified before the phase can advance</span>${P.map(p => `${crop ? `<div class="k">Wave ${p.wave}${p.cleared ? " · all verified" : ""}</div>` : ""}${p.workers.map(x => {
     if (x.verified) return `<div class="k">✓ ${esc(x.name)}${q(x)} · verified by ${esc(x.verifiedBy)}${x.notes ? " · " + esc(x.notes) : ""}</div>`;
-    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
-    if (x.required && !x.submitted) { const team = a.assignees || [], multi = team.length > 1 && a.scope === "crop-wave", ids = team.map(t => String(t.id)), free = (D.workers || []).filter(w => !ids.includes(String(w.id)));
+    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? wt(x.at) : ""} · ${x.min} min${q(x)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
+    if (x.required && !x.submitted) { const team = a.assignees || [], multi = team.length > 1 && a.scope === "crop-wave", ids = team.map(t => String(t.id)), free = (B.workers || []).filter(w => !ids.includes(String(w.id)));
       const nk = dk("dn", r.runId, a.id, x.name), sk = dk("rt", r.runId, a.id, x.name);
       return `<div class="frm"><span class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : "not submitted yet"}</span>`
         + `<select data-d="${esc(sk)}" aria-label="Reassign ${esc(x.name)} to"><option value="">Reassign ${esc(x.name)}'s portion to…</option>${free.map(w => `<option value="${esc(w.id)}" ${String(DRAFT[sk]) === String(w.id) ? "selected" : ""}>${esc(w.name)}</option>`).join("")}</select>`
@@ -388,18 +466,130 @@ function portBox(a, r) {   // manager audit: verify each worker's submitted port
         + (multi ? ` <button type="button" class="alt sm" data-a="dropw" data-id="${esc(a.id)}" data-who="${esc(x.name)}">Remove ${esc(x.name)} from task</button>` : "") + `</div>`; }
     return `<div class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : x.required ? "not submitted yet" : "no submission"}</div>`; }).join("")}`).join("")}</div>`;
 }
-function tally(list) { const p = {total:list.length, un:0, as:0, ip:0, dn:0, wait:0}; list.forEach(a => { p[bucket(a)]++; if (a.completed && !a.verified && !a.overridden && a.scope !== "crop-wave") p.wait++; }); return p; }
-function prog(r) {   // {total, un, as, ip, dn}: fresh from the run detail when loaded, else from the monitor snapshot
-  const rs = RS[r.runId];
-  if (rs && rs.activities) return tally(rs.activities);
-  const s = r.prog; return s ? {total:s.total, un:s.unassigned, as:s.assigned, ip:s.inProg, dn:s.done, wait:0} : null;
-}
-function progBadge(r) {
-  const p = prog(r); if (!p) return "";
+function tally(list) { const p = {total:list.length, un:0, as:0, ip:0, dn:0}; list.forEach(a => p[bucket(a)]++); return p; }
+function progBadge(r) {   // only runs whose activities are loaded (the open run) show it, as in the Manager console
+  const rs = RS[r.runId], p = rs && rs.activities ? tally(rs.activities) : null; if (!p) return "";
   if (!p.total) return `<span class="badge open">○ No activities yet</span>`;
   const all = p.dn === p.total;
   return `<span class="badge ${all ? "ok" : p.un ? "wait" : "open"}" title="${p.un} not assigned · ${p.as} assigned · ${p.ip} in progress · ${p.dn} complete">${all ? "✓" : p.un ? "!" : "◐"} ${p.dn} of ${p.total} complete</span>`;
 }
+function roomItems(t) { const o = []; flat().forEach(({r, w}) => { if (!(w.trays > 0)) return; const [k, l] = wst(r, w, t); if (k === "pend" || k === "done") return; o.push({r, w, k, l, track: trackOf(r)}); }); return o; }
+function roomMath() {
+  const cap = CAP = Math.max(1, Math.floor(800 / SQ)), RI = roomItems(T), inR = RI.filter(i => i.k !== "post"), post = RI.filter(i => i.k === "post");
+  const tIn = inR.reduce((n, i) => n + i.w.trays, 0), tPost = post.reduce((n, i) => n + i.w.trays, 0);
+  return {cap, RI, tIn, tPost, free: Math.max(0, cap - tIn - tPost), over: tIn + tPost - cap};
+}
+function room() {
+  if (RFILT === "empty") RFILT = "all";
+  const {cap, RI, tIn, tPost, free, over} = roomMath(), pk = busiest();
+  const cnt = {all: tIn + tPost, occupied: RI.filter(i => i.k === "occupied" || i.k === "ready").reduce((n, i) => n + i.w.trays, 0), attention: RI.filter(i => i.k === "attention").reduce((n, i) => n + i.w.trays, 0), post: tPost};
+  const flt = [["all", "All"], ["occupied", "Occupied"], ["attention", "Needs attention"], ["post", "Post-transplant"]];
+  const vis = RI.filter(i => (RFILT === "all" || (RFILT === "occupied" ? i.k === "occupied" || i.k === "ready" : RFILT === i.k)) && (!RCF || i.r.crop === RCF));
+  const crops = [...new Map(B.runs.filter(r => !r.error).map(r => [r.crop, r.cropName])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+  const tracks = [...new Set(vis.map(i => i.track))].sort();
+  const sel = i => SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave;
+  const grp = i => { const c = col(i.r.crop), s = sel(i);
+    return `<div class="wg"><button type="button" class="wh ${s ? "sel" : ""}" style="border-left-color:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}"><span class="sw" style="background:${c}"></span><b>${esc(i.r.cropName)}</b> <span class="wv">W${i.w.wave}</span> · ${i.w.trays} trays ${wbadge(i.k, i.l)} ${progBadge(i.r)}</button>
+    <div class="cells">${Array.from({length:i.w.trays}, (_, n) => `<button type="button" class="cell st-${i.k} ${s ? "sel" : ""}" style="--c:${c}" data-sel="${esc(i.r.runId)}|${i.w.wave}" title="${esc(i.r.cropName)} W${i.w.wave} · tray ${n + 1} of ${i.w.trays}" aria-label="${esc(i.r.cropName)} wave ${i.w.wave}, tray ${n + 1} of ${i.w.trays}, ${esc(i.l)}"><b>W${i.w.wave}</b><small>T${n + 1}</small></button>`).join("")}</div></div>`; };
+  const top = `<div class="row" style="margin-top:0"><h2 style="margin:0">Propagation room</h2><span class="sp"></span>
+    <button class="alt" type="button" data-day="-1" aria-label="Previous day">‹</button><input type="date" id="day" value="${T}" aria-label="Date"><button class="alt" type="button" data-day="1" aria-label="Next day">›</button><button class="alt" type="button" data-day="0">Today</button>${pk ? `<button class="alt" type="button" data-peak="${pk.t}">Busiest day (${pk.n} trays)</button>` : ""}</div>
+  <p><b>${tIn}</b> of ${cap} trays in the room on ${fmt(T)}${tPost ? ` · <b>${tPost}</b> bench slots awaiting sanitizing` : ""} · ${free} available${over > 0 ? ` · <b style="color:var(--bad)">${over} over capacity</b>` : ""}</p>
+  ${noRunNote()}
+  <div class="chips" role="group" aria-label="Room view"><button type="button" class="${RV === "map" ? "on" : "alt"}" data-rview="map">Room map</button><button type="button" class="${RV === "bench" ? "on" : "alt"}" data-rview="bench">Available benches · ${free}</button></div>`;
+  const map = `<div class="chips" role="group" aria-label="Status filter">${flt.map(([v, l]) => `<button type="button" class="${RFILT === v ? "on" : "alt"}" data-a="filt" data-f="${v}">${l} · ${cnt[v]}</button>`).join("")}</div>
+  <div class="row"><label class="k">Crop <select id="rcf"><option value="">All crops</option>${crops.map(([c, n]) => `<option value="${esc(c)}" ${c === RCF ? "selected" : ""}>${esc(n)} (${esc(c)})</option>`).join("")}</select></label>
+    <label class="k">Sq ft per tray <input type="number" id="sq" min="0.5" step="0.05" value="${SQ}" style="width:90px"></label></div>
+  ${tracks.map(t => { const l = vis.filter(i => i.track === t).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave), n = l.reduce((s, i) => s + i.w.trays, 0), k = "trk|" + t;
+    return `<details class="tk" data-ok="${esc(k)}" ${opn(k, true)}><summary>Track ${esc(t)} · ${n} trays shown</summary>${l.map(grp).join("")}</details>`; }).join("")}
+  ${!vis.length ? `<p class="k">Nothing matches this filter on ${fmt(T)}.</p>` : ""}
+  <div class="rleg"><span><i style="background:#555"></i>In propagation ●</span><span><i style="background:#555;border-color:var(--warnb)"></i>Needs attention !</span><span><i style="background:#555;box-shadow:0 0 0 2px var(--acc)"></i>Transplant ≤ 3 d →</span><span><i style="background:repeating-linear-gradient(45deg,#7d8780 0 4px,#d4dad6 4px 8px)"></i>Post-transplant S</span></div>
+  <p class="k">Capacity = 800 sq ft Bay 3 bench limit (Infra_Field) ÷ sq ft per tray. Tray colors are crops. Each block is one wave (W1, W2 …) and each tray shows its wave and tray number (W2 T3 = wave 2, tray 3). Tap a block or a tray to open that wave. Post-transplant slots stay held until bench sanitizing (ACT-607) is verified or overridden.</p>`;
+  const bench = `<h3 style="margin-top:4px">Available benches</h3>
+  <p><b>${free}</b> of ${cap} tray slots are free in Bay 3 on ${fmt(T)}${over > 0 ? ` · <b style="color:var(--bad)">${over} over capacity</b>` : ""}${tPost ? ` · ${tPost} more are held until bench sanitizing is verified` : ""}.</p>
+  ${free ? `<div class="cells">${Array.from({length: Math.min(free, 600)}, () => `<span class="cell e"></span>`).join("")}</div>${free > 600 ? `<p class="k">Showing 600 of ${free} free slots.</p>` : ""}` : `<p class="k">No free slots on this day.</p>`}
+  <div class="rleg"><span><i style="border-style:dashed"></i>Available</span></div>
+  <p class="k">Change the date above to see free benches on another day. Capacity uses ${SQ} sq ft per tray; change it under Room map.</p>`;
+  $("room").innerHTML = top + (RV === "bench" ? bench : map);
+  $("day").onchange = e => { T = e.target.value || T; TRAY = null; render(); };
+  if ($("sq")) $("sq").onchange = e => { SQ = Math.max(0.5, +e.target.value || 1.55); TRAY = null; render(); };
+  if ($("rcf")) $("rcf").onchange = e => { RCF = e.target.value; room(); };
+}
+/* ---------- tabs: calendar (opener), propagation room, Waves list, Wave, queue, team, labor ---------- */
+let TAB = "cal", QN = 0, WF = "all", RV = "map";
+const TABS = [["cal", "Production calendar"], ["room", "Propagation room"], ["waves", "Waves"], ["wave", "Wave"], ["queue", "Queue"], ["team", "Team"], ["lab", "Labor Hours"]];
+const PANES = {cal: "cal", room: "room", waves: "waves", wave: "prof", queue: "qp", team: "team", lab: "lab"};
+function tabs() {
+  const sr = SEL && B.runs.find(r => r.runId === SEL.runId);
+  $("tabs").innerHTML = TABS.map(([v, l]) => { const t = v === "wave" && sr ? `Wave · ${esc(sr.cropName)} W${SEL.wave}` : v === "queue" ? `Queue (${QN})` : l;
+    return `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-tab="${v}">${t}</button>`; }).join("");
+}
+function kpis() {
+  const attn = flat().filter(x => wst(x.r, x.w, T)[0] === "attention").length, aw = B.runs.reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0), {free} = roomMath();
+  const k = (a, n, l, hot) => `<button type="button" class="kpi ${hot ? "hot" : ""}" ${a}><b>${n}</b><span>${l}</span></button>`;
+  $("kpis").innerHTML = k('data-a="kpiatt"', attn, "Waves needing attention", attn > 0) + k('data-tab="queue"', aw, "Done, awaiting verification", aw > 0) + k('data-a="kpibench"', free, "Bench slots available", false);
+}
+function goTab(t) {
+  TAB = t; Object.entries(PANES).forEach(([k, id]) => $(id).classList.toggle("hidden", k !== t)); tabs();
+  if (t === "team") { team(); if (!TM) loadTeam(); }
+  else if (t === "lab") { if (LAB) labor(); else { $("lab").innerHTML = `<p class="k">Loading labor hours…</p>`; loadLab(); } }
+  else if (t === "room") room(); else if (t === "waves") wavesList(); else if (t === "wave") prof(); else if (t === "cal") calendar();
+  $("tabs").scrollIntoView({behavior: "smooth", block: "start"});
+}
+const WFL = [["all", "All"], ["attention", "Needs attention"], ["occupied", "In propagation"], ["post", "Post-transplant"], ["pend", "Not in room yet"], ["done", "Planted"]];
+const sbadge = (k, l) => k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : wbadge(k, l);
+function wavesList() {
+  const el = $("waves"); if (!el) return;
+  const all = flat().filter(x => !FILTER || x.r.crop === FILTER).map(({r, w}) => { const [k, l] = wst(r, w, T); return {r, w, k, l, f: k === "ready" ? "occupied" : k}; });
+  const cnt = {}; WFL.forEach(([v]) => cnt[v] = v === "all" ? all.length : all.filter(x => x.f === v).length);
+  const vis = all.filter(x => WF === "all" || x.f === WF).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave);
+  const row = x => `<div class="q"><span class="n"><b>${esc(x.r.cropName)}</b> <span class="wv">W${x.w.wave}</span> <span class="k">of ${x.r.waves.length} · ${pf(x.r.platform)} · run ${esc(x.r.runId)}</span><br><span class="k">${x.w.trays ? x.w.trays + " trays" : "Direct-seeded, no trays"} · sow ${fmt(x.w.sow)} · transplant ${fmt(x.w.plant)}</span></span>${sbadge(x.k, x.l)}<button type="button" class="alt" data-sel="${esc(x.r.runId)}|${x.w.wave}">Open</button></div>`;
+  el.innerHTML = `<h2>Waves</h2><p class="k">Every wave with its tray count and its status on ${fmt(T)}${FILTER ? " (crop filter on: change it under Crops and waves)" : ""}. Press Open to work on a wave.</p>
+  <div class="chips" role="group" aria-label="Wave status filter">${WFL.map(([v, l]) => `<button type="button" class="${WF === v ? "on" : "alt"}" data-wf="${v}">${l} · ${cnt[v]}</button>`).join("")}</div>
+  ${vis.length ? vis.map(row).join("") : `<p class="k">No waves match this filter on ${fmt(T)}.</p>`}`;
+}
+const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? "In progress" + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.join(", ") : "") : a.assignee ? "Assigned" : "Not assigned"; };
+function prof() {
+  const el = $("prof"), r = SEL && B.runs.find(x => x.runId === SEL.runId), w = r && r.waves && r.waves.find(x => x.wave === SEL.wave);
+  if (!w) { el.innerHTML = `<h2>Wave</h2><p class="k">No wave is open yet. Pick one from the Waves list, or tap a block or tray in the Propagation room.</p><div class="row"><button type="button" data-tab="waves">Go to Waves</button></div>`; return; }
+  const [k, l] = wst(r, w, T), rs = RS[r.runId], dl = days(T, w.plant);
+  el.innerHTML = `<div class="row" style="margin-top:0"><button type="button" class="alt" data-tab="waves">‹ Waves</button></div><div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · W${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : wbadge(k, l)}</div>
+  <div class="facts"><div><span class="k">Sow date</span><b>${fmt(w.sow)}</b></div><div><span class="k">Transplant (DOB)</span><b>${fmt(w.plant)}</b><span class="k">${dl >= 0 ? "in " + dl + " d" : -dl + " d ago"}</span></div>
+  <div><span class="k">Trays</span><b>${w.trays || "None (direct)"}${r.trayCells ? " · " + r.trayCells + "-cell" : ""}</b></div><div><span class="k">Material</span><b>${w.material ? w.material.toLocaleString() : "Bulk"}</b></div>
+  <div><span class="k">Propagation</span><b>${esc(r.propLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(r.location)}${r.bed ? " · bed " + esc(r.bed) : ""}</b></div>
+  <div><span class="k">Run · platform</span><b>${esc(r.runId)} · ${pf(r.platform)}${/^(ADDITIONAL|SHORTFALL)/.test(r.runType || "") ? " (Shortfall Crop" + (r.shortfallYear ? " " + r.shortfallYear : "") + ")" : ""}</b></div><div><span class="k">Initiated</span><b>${w.init ? esc(w.init.by) + ", " + new Date(w.init.at).toLocaleDateString() : "Not yet"}</b></div></div>
+  ${w.init ? "" : `<div class="row"><button type="button" data-a="init">Initiate this wave</button><span class="k">Adds every activity for the run so work can be dispatched.</span></div>`}
+  ${(w.phases || []).length ? `<details><summary>Propagation phases</summary><table><tr><th>Phase</th><th>Days</th><th>Starts</th><th>Ends</th></tr>${w.phases.map(p => `<tr ${p.start <= T && T < p.end ? 'style="font-weight:700"' : ""}><td>${esc(p.phase)}</td><td>${p.days}</td><td>${fmt(p.start)}</td><td>${fmt(p.end)}</td></tr>`).join("")}</table></details>` : ""}
+  ${progCard(r, w)}${gatesCard(r, w, rs)}${leafCard(r, w, rs)}${dispatch(r, w, rs)}`;
+  if (!rs && !LOADING[r.runId]) loadRun(r.runId);
+}
+const PICK = new Set(), WPICK = new Set(), RW = {};
+/* ---------- wave pane, same as the Manager console (stage gates, next step, first-leaf check, dispatch) ---------- */
+const ST = {occupied:{l:"In propagation", g:"●"}, ready:{l:"Transplant soon", g:"→"}, attention:{l:"Needs attention", g:"!"}, post:{l:"Post-transplant", g:"S"}};
+const gateOk = g => (g.completed && g.verified) || g.overridden;
+const leafOk = w => !!w.leaf && (w.leaf.outcome === "PASS" || w.leaf.outcome === "OVERRIDDEN");
+const postOpen = r => { const g = (r.gates || []).filter(x => x.scope === "post-transplant"); return g.length > 0 && !g.every(gateOk); };
+function leafDue(w, t) { const ph = (w.phases || []).find(p => p.phase === "Nursery" && p.days > 0); return !!ph && t >= ph.start; }
+function wst(r, w, t) {   // [status, label] of one wave on date t
+  if (t >= w.plant) return postOpen(r) && t < add(w.plant, 30) ? ["post", "Post-transplant: bench sanitizing not verified"] : ["done", "Planted"];
+  if (t < w.sow) return ["pend", "Not in the room yet · sow in " + days(t, w.sow) + " d"];
+  const why = [], pre = (r.gates || []).filter(g => g.scope === "pre-sowing");
+  if (!w.init) why.push("Not initiated");
+  if (pre.some(g => !gateOk(g))) why.push("Bench not verified ready");
+  if (!r.direct) { if (w.leaf && w.leaf.outcome === "FAIL") why.push("First-leaf check FAILED"); else if (!leafOk(w) && leafDue(w, t)) why.push("First-leaf check due"); }
+  if (why.length) return ["attention", why.join(" · ")];
+  const left = days(t, w.plant), ph = (w.phases || []).find(p => p.start <= t && t < p.end);
+  return left <= 3 ? ["ready", "Transplant in " + left + " d"] : ["occupied", "In propagation" + (ph ? " · " + ph.phase : "")];
+}
+const wbadge = (k, l) => `<span class="badge st-${k}">${ST[k].g} ${esc(l || ST[k].l)}</span>`;
+const wt = s => { if (!s) return ""; const d = new Date(String(s).length <= 10 ? s + "T00:00:00" : s); return isNaN(d) ? esc(s) : d.toLocaleString(undefined, {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}); };
+const KIND = {DIRECT_CLOSE:"Direct close", GATE_OVERRIDE:"Gate override", ACTIVITY_OVERRIDE:"Activity override", LEAF_OVERRIDE:"First-leaf override", ALERT_RESOLVED:"Alert resolved", ASSIGN:"Assigned", REASSIGN:"Reassigned", UNASSIGN:"Removed"};
+const MOVEK = {REASSIGN:"Reassigned", UNASSIGN:"Removed", ASSIGN:"Added to team"};
+const isMove = x => x.kind === "REASSIGN" || x.kind === "UNASSIGN" || (x.kind === "ASSIGN" && !!String(x.note || "").trim());
+const dk = (...p) => p.join("|"), dv = k => esc(DRAFT[k] || "");
+const UIOPEN = {};   // remembers which lists the manager expanded or collapsed across re-draws
+const opn = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
+document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.ok; if (k) UIOPEN[k] = e.target.open; }, true);
+const isDone = a => actKind(a).k === "done";
 const othW = a => { if (a.scope !== "crop-wave" || !WV) return ""; const o = (a.sessions || []).filter(s => Number(s.wave) !== WV.wave); return o.length ? " · also working now on other waves: " + o.map(s => esc(s.by) + " W" + s.wave).join(", ") : ""; };
 function actLabel(a) { const r = actLabel0(a), o = othW(a); return o ? [r[0], r[1] + o] : r; }
 function actLabel0(a) {   // [css, text] one plain status word per activity
@@ -407,12 +597,9 @@ function actLabel0(a) {   // [css, text] one plain status word per activity
   const q = actKind(a), n = a.scope === "crop-wave" && WV ? " · W" + WV.wave : "";
   if (q.k === "done") return ["ok", "✓ Completed · verified" + n];
   if (q.k === "wait") return ["wait", "! Submitted · needs verification" + n];
-  if (q.k === "prog") return ["prog", (q.waveOk ? "◐ In progress · this wave verified, other waves not finished" : (a.sessions || []).some(s => !(a.scope === "crop-wave" && WV) || Number(s.wave) === WV.wave) ? "◐ Working now" : "◐ Partly done, nobody working now") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.map(esc).join(", ") : "") + n];
+  if (q.k === "prog") return ["prog", ((a.sessions || []).some(s => !(a.scope === "crop-wave" && WV) || Number(s.wave) === WV.wave) ? "◐ Working now" : "◐ Partly done, nobody working now") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.map(esc).join(", ") : "") + n];
   return a.assignee ? ["open", "◔ Assigned"] : ["wait", "○ Not assigned"];
 }
-const UIOPEN = {};   // remembers which lists the manager expanded or collapsed across re-draws
-document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.ok; if (k) UIOPEN[k] = e.target.open; }, true);
-const isDone = a => actKind(a).k === "done";
 function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the manager does now
   const step = (t, x, btn) => `<div class="nxt"><span class="nx-k">What to do next</span><b class="nx-t">${t}</b><span class="nx-x">${x}</span>${btn || ""}</div>`;
   const pre = gates.filter(a => a.scope === "pre-sowing"), pend = gates.filter(a => a.pending > 0 && !a.overridden && a.scope === "pre-sowing");
@@ -439,14 +626,13 @@ function nextStep(r, w, rs, gates, next) {   // one clear instruction: what the 
 const phNo = s => { const m = /Phase\s*(\d+)/i.exec(String(s || "")); return m ? +m[1] : 99; };
 const byPhase = (list, fb) => { const g = []; list.slice().sort((x, y) => phNo(x.phase) - phNo(y.phase) || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)).forEach(a => { const p = a.phase || fb; let o = g.find(x => x.p === p); if (!o) g.push(o = {p, l:[]}); o.l.push(a); }); return g; };   // phases in 1-6 order, activities in ID order
 const isFin = a => isDone(a) || (a.scope !== "crop-wave" && gateOk(a));   // completed and verified (or overridden): locked, read-only
-const openOf = (k, def) => (k in UIOPEN ? UIOPEN[k] : def) ? "open" : "";
 function finRow(a, r) {   // greyed, collapsed, read-only: no assign, verify, override or close controls
   const gate = a.scope !== "crop-wave", k = r.runId + "|fin|" + a.id, tr = a.history || [], bits = [];
-  if (a.completed) bits.push(`Completed ${when(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
-  if (a.verified) bits.push(`Verified ${when(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
+  if (a.completed) bits.push(`Completed ${wt(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
+  if (a.verified) bits.push(`Verified ${wt(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
   if (a.overridden) bits.push(`<b>Overridden</b> by ${esc(a.overrideBy || "manager")}: ${esc(a.overrideReason)}`);
-  return `<details class="fin" data-ok="${esc(k)}" ${openOf(k, false)}><summary><span><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge gry">gate</span>' : ""}</span><span class="badge gry">${a.overridden ? "✓ Completed (overridden)" : "✓ Completed · verified"}</span></summary>
-    ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}${a.assignee ? `<div class="d">Team: ${esc(String(a.assignee).replace(/;\s*/g, ", "))}</div>` : ""}${bits.length ? `<div class="d">${bits.join("<br>")}</div>` : ""}${portNote(a)}${moveLine(a)}${tr.length ? `<div class="d k">${tr.slice().reverse().map(h => `${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}`).join("<br>")}</div>` : ""}</details>`;
+  return `<details class="fin" data-ok="${esc(k)}" ${opn(k, false)}><summary><span><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge gry">gate</span>' : ""}</span><span class="badge gry">${a.overridden ? "✓ Completed (overridden)" : "✓ Completed · verified"}</span></summary>
+    ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}${a.assignee ? `<div class="d">Team: ${esc(String(a.assignee).replace(/;\s*/g, ", "))}</div>` : ""}${bits.length ? `<div class="d">${bits.join("<br>")}</div>` : ""}${portNote(a)}${moveLine(a)}${tr.length ? `<div class="d k">${tr.slice().reverse().map(h => `${wt(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}`).join("<br>")}</div>` : ""}</details>`;
 }
 function progCard(r, w) {
   WV = w; const rs = RS[r.runId];
@@ -464,25 +650,23 @@ function progCard(r, w) {
   const nx = `<h3 style="margin:12px 0 4px">Phases · ${cnt(all)}</h3>` + phs.map(g => { const fin = g.l.every(isFin), cur = g === cp, k = key("ph", g.p);
     const tag = fin ? "completed" : cur ? "up next" : "later";
     return `<details class="grp ${fin ? "dim" : ""} ${cur ? "cur" : ""}" data-ok="${esc(k)}" ${op(k, !fin && (cur || g.l.some(a => a.pending > 0)))}><summary>${fin ? "✓ " : cur ? "▶ " : ""}${esc(g.p)} · ${cnt(g.l)} <span class="k">(${tag})</span></summary><ul class="al-list">${g.l.map(a => row(a, a.scope === "post-transplant" ? "gate · after transplant" : a.scope !== "crop-wave" ? "gate · before sowing" : a.locked ? "locked until required activities are cleared" : "")).join("")}</ul></details>`; }).join("");
-  return `<section class="blk pc"><h3 style="margin:0 0 6px">Activities · run ${esc(r.runId)}</h3>
+  const pendN = all.reduce((n, a) => n + (a.overridden ? 0 : a.pending || 0), 0);
+  return `<details class="blk pc" data-ok="${esc(key("act"))}" ${op(key("act"), pendN > 0)}><summary>Activities · run ${esc(r.runId)} · ${doneN(all)} of ${all.length} complete${pendN ? ` <span class="badge wait">! ${pendN} to verify</span>` : ""}</summary>
     ${pre.length ? `<div class="light ${ready ? "go" : "stop"}"><i></i><span>${ready ? "Ready to sow" : "Not ready to sow"}<small>${ready ? "All required activities before sowing are cleared." : left + " required activit" + (left > 1 ? "ies" : "y") + " still to clear before sowing."}</small></span></div>` : ""}
     ${nextStep(r, w, rs, gates, next)}${nx}
-    <p class="k" style="margin:8px 0 0;font-size:13px">Shared by all ${r.waves.length} wave${r.waves.length > 1 ? "s" : ""} of this run.</p></section>`;
+    <p class="k" style="margin:8px 0 0;font-size:13px">Shared by all ${r.waves.length} wave${r.waves.length > 1 ? "s" : ""} of this run.</p></details>`;
 }
-const dk = (...p) => p.join("|");
-const dv = k => esc(DRAFT[k] || "");
 function ctls(a, r, w, gateCard) {   // manager controls for one activity
   const run = r.runId, id = a.id, gate = a.scope !== "crop-wave", c = [];
   if (!a.overridden) c.push(portBox(a, r));
   if (a.completed && !a.verified && !a.overridden && !(a.portions || []).length) c.push(`<div class="frm"><input type="text" data-d="${dk("n", run, id)}" value="${dv(dk("n", run, id))}" placeholder="Verification notes (optional)" aria-label="Verification notes for ${esc(id)}"><button type="button" class="sm" data-a="verify" data-id="${esc(id)}">Verify</button></div>`);
-  if (!a.completed) c.push(`<details ${gateCard ? "" : ""}><summary>Direct close</summary><p class="k">Marks it done without a worker session. The reason is logged.</p><div class="frm"><input type="text" data-d="${dk("c", run, id)}" value="${dv(dk("c", run, id))}" placeholder="Reason (required)" aria-label="Reason for closing ${esc(id)}">
+  if (!a.completed) c.push(`<details><summary>Direct close</summary><p class="k">Marks it done without a worker session. The reason is logged.</p><div class="frm"><input type="text" data-d="${dk("c", run, id)}" value="${dv(dk("c", run, id))}" placeholder="Reason (required)" aria-label="Reason for closing ${esc(id)}">
     ${a.requiresCount ? `<input type="number" min="0" step="any" data-d="${dk("cc", run, id)}" value="${dv(dk("cc", run, id))}" placeholder="Qty" aria-label="Quantity"><input class="u" type="text" data-d="${dk("cu", run, id)}" value="${dv(dk("cu", run, id))}" placeholder="Unit" aria-label="Unit">` : ""}
     <button type="button" class="alt sm" data-a="close" data-id="${esc(id)}">Close it</button></div></details>`);
   if (!a.overridden && !a.cleared && !a.verified) c.push(`<details><summary>${gate ? "Override gate" : "Override activity"}</summary><p class="k">${gate ? "Counts the gate as cleared without completing and verifying it." : "Counts this activity as complete for every wave of the run without waiting for worker portions to be submitted and verified."} A written explanation is required. It is logged with your name and cannot be undone here.</p><div class="frm"><input type="text" maxlength="300" data-d="${dk("o", run, id)}" value="${dv(dk("o", run, id))}" placeholder="Explanation (required)" aria-label="Override explanation for ${esc(id)}"><button type="button" class="dng sm" data-a="override" data-id="${esc(id)}">Override</button></div></details>`);
   return c.join("");
 }
-const refOf = id => ((D && D.refs) || {})[id] || {};
-const mvTxt = h => `${!h.from && h.to ? `Added <b>${esc(h.to)}</b> to the team` : h.from && !h.to ? `Removed <b>${esc(h.from)}</b> from the task` : `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b>`} · by <b>${esc(h.by)}</b> · ${when(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
+const mvTxt = h => `${!h.from && h.to ? `Added <b>${esc(h.to)}</b> to the team` : h.from && !h.to ? `Removed <b>${esc(h.from)}</b> from the task` : `From <b>${esc(h.from || "no one")}</b> to <b>${esc(h.to || "no one")}</b>`} · by <b>${esc(h.by)}</b> · ${wt(h.at)}${h.note ? `<br>Note from ${esc(h.by)}: “${esc(h.note)}”` : ""}`;
 function moveLine(a) {   // newest reassignment of this activity, always visible
   const m = (a.history || []).filter(isMove); if (!m.length) return "";
   const l = m[m.length - 1], keep = (a.assignees || []).filter(x => x.name === l.to), drop = (a.assignees || []).filter(x => x.name !== l.to);
@@ -491,17 +675,17 @@ function moveLine(a) {   // newest reassignment of this activity, always visible
 }
 function reassignBox(a, r) {   // from / to / by / note, for one activity (dispatch list and stage gates)
   const run = r.runId, id = a.id, key = run + "|" + id, now0 = (a.assigneeIds || []).map(String), set = RW[key] || new Set(), nk = dk("rn", run, id);
-  const to = D.workers.filter(x => set.has(String(x.id))).map(x => x.name), from = a.assignee ? String(a.assignee).replace(/;\s*/g, ", ") : "";
+  const to = B.workers.filter(x => set.has(String(x.id))).map(x => x.name), from = a.assignee ? String(a.assignee).replace(/;\s*/g, ", ") : "";
   return `<details class="rg" ${RW[key] || DRAFT[nk] ? "open" : ""}><summary>${a.assignee ? "Reassign" : "Assign"}</summary>
     <p class="k">${a.assignee ? "From: <b>" + esc(from) + "</b>. Tick who it goes <b>to</b>, add a short note and press Reassign. The current owner is removed and is no longer accountable. The change is kept in the trail." : "Tick who should do this activity."}</p>
-    <div class="team">${D.workers.map(x => `<label><input type="checkbox" data-rw="${esc(key)}|${esc(x.id)}" ${set.has(String(x.id)) ? "checked" : ""} ${a.assignee && now0.includes(String(x.id)) ? "disabled" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${a.assignee && now0.includes(String(x.id)) ? " · current owner, replaced" : ""}</span></span></label>`).join("")}</div>
-    <div class="arrow">From ${esc(from || "Unassigned")} to ${esc(to.join(", ") || "(tick a worker)")}${M ? " · by " + esc(M.name) : ""}</div>
+    <div class="team">${B.workers.map(x => `<label><input type="checkbox" data-rw="${esc(key)}|${esc(x.id)}" ${set.has(String(x.id)) ? "checked" : ""} ${a.assignee && now0.includes(String(x.id)) ? "disabled" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${a.assignee && now0.includes(String(x.id)) ? " · current owner, replaced" : ""}</span></span></label>`).join("")}</div>
+    <div class="arrow">From ${esc(from || "Unassigned")} to ${esc(to.join(", ") || "(tick a worker)")}${ME ? " · by " + esc(ME.name) : ""}</div>
     <div class="frm"><input type="text" maxlength="300" data-d="${nk}" value="${dv(nk)}" placeholder="${a.assignee ? "Reassignment note (required)" : "Note (optional)"}" aria-label="Reassignment note for ${esc(id)}"><button type="button" class="sm" data-a="rgo" data-id="${esc(id)}">${a.assignee ? "Reassign" : "Assign"}</button></div></details>`;
 }
 function gateRow(a, r, w) {
   const ok = gateOk(a), bits = [];
-  if (a.completed) bits.push(`Completed ${when(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
-  if (a.verified) bits.push(`Verified ${when(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
+  if (a.completed) bits.push(`Completed ${wt(a.completedAt)}${a.completedBy ? " by " + esc(a.completedBy) : ""}${a.count ? " · " + esc(a.count) + " " + esc(a.unit) : ""}`);
+  if (a.verified) bits.push(`Verified ${wt(a.verifiedAt)}${a.verifiedBy ? " by " + esc(a.verifiedBy) : ""}${a.verifyNotes ? " · " + esc(a.verifyNotes) : ""}`);
   if (a.overridden) bits.push(`<b>Overridden</b> by ${esc(a.overrideBy || "manager")}: ${esc(a.overrideReason)}`);
   return `<div class="act"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}</span><span class="badge ${ok ? "ok" : actKind(a).k === "wait" ? "wait" : "open"}">${ok ? "✓" : actKind(a).k === "wait" ? "!" : "○"} ${esc(statusOf(a))}</span></div>
     ${a.description ? `<div class="d k">${esc(a.description)}</div>` : ""}${a.assignee ? `<div class="d">Team: ${esc(String(a.assignee).replace(/;\s*/g, ", "))}</div>` : ""}${moveLine(a)}${bits.length ? `<div class="d">${bits.join("<br>")}</div>` : ""}${reassignBox(a, r)}<div style="margin-left:0">${ctls(a, r, w, true)}</div></div>`;
@@ -512,29 +696,34 @@ function gatesCard(r, w, rs) {
   const list = rs ? rs.activities.filter(a => a.scope !== "crop-wave") : (r.gates || []);
   const pre = list.filter(a => a.scope === "pre-sowing"), post = list.filter(a => a.scope === "post-transplant"), okN = x => x.filter(gateOk).length;
   const pend = list.reduce((n, a) => n + (a.overridden ? 0 : a.pending || 0), 0);
-  const grp = (t, x, kk) => { if (!x.length) return ""; const all = x.every(gateOk), k = r.runId + "|gg|" + kk; return `<details class="grp ${all ? "dim" : ""}" data-ok="${esc(k)}" ${openOf(k, !all)}><summary>${all ? "✓ " : ""}${t} · ${okN(x)} of ${x.length} cleared</summary>${x.map(a => gateOk(a) ? finRow(a, r) : gateRow(a, r, w)).join("")}</details>`; };
-  return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">Stage gates</h3><span class="sp"></span>${pend ? `<button type="button" data-a="verifyall">Verify bed ready (${pend} done)</button>` : ""}</div>
+  const grp = (t, x, kk) => { if (!x.length) return ""; const all = x.every(gateOk), k = r.runId + "|gg|" + kk; return `<details class="grp ${all ? "dim" : ""}" data-ok="${esc(k)}" ${opn(k, !all)}><summary>${all ? "✓ " : ""}${t} · ${okN(x)} of ${x.length} cleared</summary>${x.map(a => gateOk(a) ? finRow(a, r) : gateRow(a, r, w)).join("")}</details>`; };
+  return `<details class="blk" data-ok="${esc(r.runId + "|gates")}" ${opn(r.runId + "|gates", pend > 0)}><summary>Stage gates · ${okN(list)} of ${list.length} cleared${pend ? ` <span class="badge wait">! ${pend} to verify</span>` : ""}</summary>${pend ? `<div class="row" style="margin:0"><button type="button" data-a="verifyall">Verify bed ready (${pend} done)</button></div>` : ""}
     <p class="k">Pre-sowing steps must be done and verified, or overridden with a reason, before any later activity can start. Run ${esc(r.runId)}: ${(r.acts && r.acts.gatesOk) != null ? r.acts.gatesOk + " of " + r.acts.gates : "?"} cleared.</p>
-    ${grp("Pre-sowing: bench ready for sowing", pre, "pre")}${grp("Post-transplant: bench sanitizing", post, "post")}${!rs && !list.length ? `<p class="k">Loading…</p>` : ""}</section>`;
+    ${grp("Pre-sowing: bench ready for sowing", pre, "pre")}${grp("Post-transplant: bench sanitizing", post, "post")}${!rs && !list.length ? `<p class="k">Loading…</p>` : ""}</details>`;
 }
 function leafCard(r, w, rs) {
   if (r.direct) return `<section class="blk"><h3>First-leaf check</h3><p class="k">Not applicable: ${esc(r.cropName)} is direct-seeded or a crown.</p></section>`;
   const lf = w.leaf, o = lf ? lf.outcome : "", ph = (w.phases || []).find(p => p.phase === "Nursery" && p.days > 0);
-  const feeds = rs ? rs.activities.filter(a => a.feed).map(a => a.id + " " + a.name) : (D.feeds || []);
+  const feeds = rs ? rs.activities.filter(a => a.feed).map(a => a.id + " " + a.name) : [];
   const b = o === "PASS" ? `<span class="badge ok">✓ Pass</span>` : o === "OVERRIDDEN" ? `<span class="badge wait">! Overridden</span>` : o === "FAIL" ? `<span class="badge bad">✕ Fail</span>` : `<span class="badge open">○ Pending</span>`;
   const k = dk("l", r.runId, w.wave), kk = dk("lo", r.runId, w.wave);
-  return `<section class="blk"><div class="row" style="margin:0"><h3 style="margin:0">First-leaf check · wave ${w.wave}</h3>${b}</div>
+  const lk = r.runId + "|leaf|" + w.wave;
+  return `<details class="blk" data-ok="${esc(lk)}" ${opn(lk, !leafOk(w) && leafDue(w, T))}><summary>First-leaf check · wave ${w.wave} ${b}</summary>
     <p class="k">Growth feeds (${feeds.map(esc).join(", ") || "none"}) cannot start for this wave until the outcome is Pass or a manager overrides it.${ph ? " Check is due from " + fmt(ph.start) + " (germination ends)." : ""}</p>
-    ${lf ? `<p class="k">Last set ${when(lf.at)}${lf.by ? " by " + esc(lf.by) : ""}${lf.notes ? " · " + esc(lf.notes) : ""}</p>` : ""}
+    ${lf ? `<p class="k">Last set ${wt(lf.at)}${lf.by ? " by " + esc(lf.by) : ""}${lf.notes ? " · " + esc(lf.notes) : ""}</p>` : ""}
     <div class="frm"><input type="text" data-d="${k}" value="${dv(k)}" placeholder="Notes (optional)" aria-label="First-leaf notes"><button type="button" data-a="leaf" data-o="PASS">Pass</button><button type="button" class="alt" data-a="leaf" data-o="FAIL">Fail</button><button type="button" class="alt sm" data-a="leaf" data-o="PENDING">Reset</button></div>
-    ${o === "PASS" || o === "OVERRIDDEN" ? "" : `<details><summary>Override first-leaf check</summary><div class="frm"><input type="text" data-d="${kk}" value="${dv(kk)}" placeholder="Reason (required)" aria-label="Override reason"><button type="button" class="dng sm" data-a="leaf" data-o="OVERRIDDEN">Override</button></div></details>`}</section>`;
+    ${o === "PASS" || o === "OVERRIDDEN" ? "" : `<details><summary>Override first-leaf check</summary><div class="frm"><input type="text" data-d="${kk}" value="${dv(kk)}" placeholder="Reason (required)" aria-label="Override reason"><button type="button" class="dng sm" data-a="leaf" data-o="OVERRIDDEN">Override</button></div></details>`}</details>`;
+}
+function crewOf(rs, x) {   // worker status from this run's activities: in progress when a session is open, else assigned when tasks are open
+  const open = rs.activities.filter(a => !isDone(a) && (a.assigneeIds || []).map(String).includes(String(x.id))).length;
+  const live = rs.activities.some(a => (a.sessions || []).some(s => s.by === x.name));
+  return live ? "in progress" + (open ? ", " + open + " open" : "") : open ? "assigned, " + open + " open" : "";
 }
 function dispatch(r, w, rs) {
   WV = w;
   if (!rs) return `<section class="blk"><h3>Dispatch</h3><p class="k">Loading activities…</p></section>`;
   if (!rs.activities.length) return `<section class="blk"><h3>Dispatch</h3><p class="k">No activities yet. Initiate the wave to add them.</p></section>`;
   rs.activities.forEach(a => { if (isFin(a)) PICK.delete(a.id); }); const ph = byPhase(rs.activities, "Required gate activities").map(g => [g.p, g.l]);
-  const crew = new Map(crewData().map(e => [e.id, e]));
   const row = a => {
     const gate = a.scope !== "crop-wave", fb = a.feed && !r.direct && !leafOk(w), tr = a.history || [];
     return `<div class="act"><label><input type="checkbox" data-pick="${esc(a.id)}" ${PICK.has(a.id) ? "checked" : ""} ${a.hold && !a.assignee ? "disabled" : ""} aria-label="Select ${esc(a.name)}"><span class="n"><b>${esc(a.id)}</b> ${esc(a.name)}${gate ? ' <span class="badge st-attention">gate</span>' : ""}</span><span class="k">${esc(statusOf(a))}${a.assignee ? " · " + esc(String(a.assignee).replace(/;\s*/g, ", ")) : ""}</span></label>
@@ -542,244 +731,26 @@ function dispatch(r, w, rs) {
       ${a.locked ? `<div class="d"><span class="badge wait">! Locked until the stage gates are cleared</span></div>` : ""}${a.hold && !a.assignee ? `<div class="d"><span class="badge bad">✕ Phase hold: finish and verify ${esc(a.hold)} (${esc((a.holdIds || []).join(", "))}) before assigning this</span></div>` : ""}${fb ? `<div class="d"><span class="badge bad">✕ Blocked: first-leaf check for wave ${w.wave} is not Pass</span></div>` : ""}
       ${portNote(a)}
       ${moveLine(a)}${reassignBox(a, r)}
-      ${tr.length ? `<details><summary>Trail (${tr.length})</summary>${tr.slice().reverse().map(h => `<div class="k">${when(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}</div>`).join("")}</details>` : ""}
+      ${tr.length ? `<details><summary>Trail (${tr.length})</summary>${tr.slice().reverse().map(h => `<div class="k">${wt(h.at)} · ${esc(KIND[h.kind] || h.kind)}${h.from ? " from " + esc(h.from) : ""}${h.to ? " to " + esc(h.to) : ""} · by ${esc(h.by)}${h.note ? " · Note: " + esc(h.note) : ""}</div>`).join("")}</details>` : ""}
       ${a.scope === "crop-wave" ? `<details ${a.pending ? "open" : ""}><summary>Manager actions${a.pending ? " · " + a.pending + " to verify" : ""}</summary>${ctls(a, r, w, false) || `<p class="k">Nothing to do.</p>`}</details>` : ""}</div>`; };
   const a = PICK.size, n = WPICK.size;
-  return `<section class="blk"><h3>Dispatch</h3><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; a short note is required and the change is kept in its trail (from, to, by, note).</p>
+  const dkey = r.runId + "|dispatch", asg = rs.activities.filter(x => x.assignee).length;
+  return `<details class="blk" data-ok="${esc(dkey)}" ${opn(dkey, PICK.size > 0 || WPICK.size > 0)}><summary>Dispatch · ${asg} of ${rs.activities.length} assigned</summary><p class="k">Activities are shared by every wave of run ${esc(r.runId)}. Tick activities and workers, then assign. Ticking an assigned activity replaces its team; a short note is required and the change is kept in its trail (from, to, by, note).</p>
     <div class="row"><button class="alt sm" type="button" data-a="pickall" data-m="un">Tick all unassigned</button><button class="alt sm" type="button" data-a="pickall" data-m="all">Tick all</button><button class="alt sm" type="button" data-a="pickall" data-m="none">Clear</button></div>
-    ${ph.map(([p, l]) => { const k = r.runId + "|dp|" + p, fin = l.every(isFin), def = !fin && (l.some(x => !x.assignee && !x.completed) || l.some(x => x.pending > 0)); return `<details class="grp ${fin ? "dim" : ""}" data-ok="${esc(k)}" ${openOf(k, def)}><summary>${fin ? "✓ " : ""}${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned${fin ? " · completed" : ""}</summary>${l.map(a => isFin(a) ? finRow(a, r) : row(a)).join("")}</details>`; }).join("")}
-    <h3 id="wlist">Workers</h3>${D.workers.length ? `<div class="team">${D.workers.map(x => { const e = crew.get(String(x.id)); return `<label><input type="checkbox" data-wk="${esc(x.id)}" ${WPICK.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${e && e.st !== "IDLE" ? " · " + WS[e.st].toLowerCase() + (e.tasks.length ? ", " + e.tasks.length + " open" : "") : ""}</span></span></label>`; }).join("")}</div>` : `<p class="k">No active workers in USERS.</p>`}
+    ${ph.map(([p, l]) => { const pk = r.runId + "|dp|" + p, fin = l.every(isFin); return `<details class="grp ${fin ? "dim" : ""}" data-ok="${esc(pk)}" ${opn(pk, !fin && (l.some(x => !x.assignee && !x.completed) || l.some(x => x.pending > 0)))}><summary>${fin ? "✓ " : ""}${esc(p)} · ${l.filter(x => x.assignee).length} of ${l.length} assigned${fin ? " · completed" : ""}</summary>${l.map(a => isFin(a) ? finRow(a, r) : row(a)).join("")}</details>`; }).join("")}
+    <h3 id="wlist">Workers</h3>${B.workers.length ? `<div class="team">${B.workers.map(x => { const c = crewOf(rs, x); return `<label><input type="checkbox" data-wk="${esc(x.id)}" ${WPICK.has(String(x.id)) ? "checked" : ""}> <span>${esc(x.name)} <span class="k">${esc(x.role)}${c ? " · " + c : ""}</span></span></label>`; }).join("")}</div>` : `<p class="k">No active workers found in USERS.</p>`}
     ${rs.activities.some(x => PICK.has(x.id) && x.assignee && [...WPICK].sort().join(";") !== (x.assigneeIds || []).map(String).sort().join(";")) ? `<div class="frm"><input type="text" maxlength="300" data-d="${dk("an", r.runId)}" value="${dv(dk("an", r.runId))}" placeholder="Reassignment note (required): why is this changing?" aria-label="Reassignment note"></div>` : ""}
-    <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></section>`;
+    <div class="row"><label class="k">Due date (optional) <input type="date" id="due"></label><button type="button" id="asg" data-a="assign" ${a && n ? "" : "disabled"}>${a && n ? `Assign ${a} activit${a > 1 ? "ies" : "y"} to ${n} worker${n > 1 ? "s" : ""}` : "Assign"}</button></div></details>`;
 }
-const visItems = () => RI.filter(i => (FILT === "all" || (FILT === "occupied" ? i.k === "occupied" || i.k === "ready" : FILT === i.k)) && (!CF || i.r.crop === CF)).sort((a, b) => a.w.sow < b.w.sow ? -1 : a.w.sow > b.w.sow ? 1 : a.r.runId.localeCompare(b.r.runId) || a.w.wave - b.w.wave);
-function wavesList() {   // every wave in the room for the current filter; tap Open to work on one
-  const l = visItems(), names = {all:"All", empty:"Available", occupied:"Occupied", attention:"Needs attention", post:"Post-transplant"};
-  const chips = ["all", "attention", "occupied"].map(v => `<button type="button" class="${FILT === v ? "on" : "alt"} sm" data-a="filt" data-f="${v}">${names[v]}</button>`).join("");
-  return `<h2>Waves · ${l.length}</h2><div class="row" style="margin-top:0">${chips}</div>
-    ${l.length ? l.map(i => `<div class="g"><span class="n"><b>${esc(i.r.cropName)} W${i.w.wave}</b> <span class="k">· ${i.w.trays} trays</span><br><span class="k">${esc(i.l)}</span></span><button class="${SEL && SEL.runId === i.r.runId && SEL.wave === i.w.wave ? "" : "alt"} sm" type="button" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`).join("") : `<p class="k">No waves match this filter on ${fmt(T)}.</p>`}`;
+/* ---------- manager actions on the open wave ---------- */
+const BUSY = { n: 0 };
+async function write(label, fn) { BUSY.n++; toast(label + "…"); try { return await fn(); } catch (e) { toast(e.message, true); return null; } finally { BUSY.n--; } }
+function applyRun(rs) {   // a write returns the run's fresh state: keep it, and mirror first-leaf outcomes and gates into the board data
+  RS[rs.runId] = rs; const r = B.runs.find(x => x.runId === rs.runId);
+  if (r && r.waves && rs.leaf) r.waves.forEach(w => { w.leaf = rs.leaf[w.wave] || null; });
+  if (r && r.gates) r.gates = rs.activities.filter(a => a.scope !== "crop-wave").map(a => ({id:a.id, name:a.name, scope:a.scope, completed:a.completed, verified:a.verified, overridden:a.overridden, assignee:a.assignee || "", completedBy:a.completedBy || "", overrideReason:a.overrideReason || ""}));
 }
-function paneWave() {
-  const r = SEL && runs().find(x => x.runId === SEL.runId), w = r && r.waves.find(x => x.wave === SEL.wave);
-  if (!w) return `<p class="k">No wave is open. Pick one from the list.</p><div class="row"><button type="button" data-a="tab" data-tab="waves">Go to Waves</button></div>`;
-  const [k, l] = wst(r, w, T), rs = RS[r.runId];
-  if (!rs && !LOADING[r.runId]) setTimeout(() => !RS[r.runId] && !LOADING[r.runId] && loadRun(r.runId), 0);
-  return `<div class="row" style="margin-top:0"><button class="alt sm" type="button" data-a="tab" data-tab="waves">‹ Waves</button></div>
-  <div class="row" style="margin-top:0"><h2 style="margin:0">${esc(r.cropName)} · W${w.wave} of ${r.waves.length}</h2>${k === "pend" || k === "done" ? `<span class="badge">${esc(l)}</span>` : badge(k, l)}</div>
-  <div class="facts"><div><span class="k">Sow date</span><b>${fmt(w.sow)}</b></div><div><span class="k">Transplant (DOB)</span><b>${fmt(w.plant)}</b><span class="k">${days(T, w.plant) >= 0 ? "in " + days(T, w.plant) + " d" : -days(T, w.plant) + " d ago"}</span></div>
-  <div><span class="k">Trays</span><b>${w.trays || "None (direct)"}${r.trayCells ? " · " + r.trayCells + "-cell" : ""}</b></div><div><span class="k">Material</span><b>${w.material ? w.material.toLocaleString() : "Bulk"}</b></div>
-  <div><span class="k">Propagation</span><b>${esc(r.propLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(r.location)}${r.bed ? " · bed " + esc(r.bed) : ""}</b></div>
-  <div><span class="k">Run · platform</span><b>${esc(r.runId)} · ${pf(r.platform)}${r.runType === "ADDITIONAL" ? " (unplanned)" : ""}</b></div><div><span class="k">Initiated</span><b>${w.init ? esc(w.init.by) + ", " + new Date(w.init.at).toLocaleDateString() : "Not yet"}</b></div></div>
-  ${canAct() ? "" : `<div class="note" style="margin:10px 0">View only. ${MODE === "live" ? "Turn on Manager mode to act." : "Go live and turn on Manager mode to act."}</div>`}
-  ${w.init ? "" : `<div class="row"><button type="button" data-a="init">Initiate this wave</button><span class="k">Adds every activity for the run so work can be dispatched.</span></div>`}
-  ${(w.phases || []).length ? `<details><summary>Propagation phases</summary><table><tr><th>Phase</th><th>Days</th><th>Starts</th><th>Ends</th></tr>${w.phases.map(p => `<tr ${p.start <= T && T < p.end ? 'style="font-weight:700"' : ""}><td>${esc(p.phase)}</td><td>${p.days}</td><td>${fmt(p.start)}</td><td>${fmt(p.end)}</td></tr>`).join("")}</table></details>` : ""}
-  ${progCard(r, w)}${gatesCard(r, w, rs)}${leafCard(r, w, rs)}${dispatch(r, w, rs)}`;
-}
-
-/* ---------- crew pane ---------- */
-function paneCrew() {
-  const c = crewData(), vb = (v, l) => `<button type="button" class="${CREW === v ? "on" : "alt"}" data-a="crewv" data-v="${v}">${l}</button>`;
-  const head = `<div class="row" style="margin-top:0"><h2 style="margin:0">Crew</h2><span class="sp"></span>${vb("worker", "By worker")}${vb("loc", "By location")}</div>`;
-  const card = e => `<div class="wk ws-${e.st}"><div class="row" style="margin:0"><b>${esc(e.name)}</b><span class="k">${esc(e.role)}</span><span class="sp"></span><span class="badge ws-${e.st}">${WS[e.st]}</span></div>
-    ${e.sess.map(sessLine).join("")}${e.tasks.length ? `<div class="k"><b>${e.tasks.length} open</b></div>${e.tasks.map(t => `<div class="k" style="margin:2px 0 6px"><b>${esc(t.activityId)} ${esc(t.activity)}</b> (${esc(t.cropCode || t.crop)})${t.description ? `<br>${esc(t.description)}` : ""}</div>`).join("")}` : ""}
-    ${(e.sess[0] || e.tasks[0]) ? `<div class="row" style="margin-bottom:0"><button type="button" class="alt sm" data-sel="${esc((e.sess[0] || e.tasks[0]).runId)}|${e.sess[0] ? e.sess[0].wave : 1}">Open task</button></div>` : ""}</div>`;
-  if (CREW === "worker") return head + (c.length ? c.map(card).join("") : `<p class="k">No workers found.</p>`);
-  const locOf = e => e.sess[0] ? e.sess[0].location : e.tasks[0] ? e.tasks[0].loc : "No location";
-  const by = {}; c.filter(e => e.st !== "IDLE").forEach(e => (by[locOf(e)] = by[locOf(e)] || []).push(e));
-  const idle = c.filter(e => e.st === "IDLE");
-  return head + (Object.keys(by).length ? Object.keys(by).sort().map(l => `<h3>${esc(l)}</h3>${by[l].map(card).join("")}`).join("") : `<p class="k">Nobody is assigned or working right now.</p>`) + (idle.length ? `<h3>Idle</h3><p class="k">${idle.map(e => esc(e.name)).join(", ")}</p>` : "");
-}
-
-/* ---------- watchguard pane ---------- */
-function milestones() {
-  const t = localToday(), o = [];
-  flat().forEach(({r, w}) => {
-    if (!(w.trays > 0) || t >= w.plant) return;
-    const d = days(t, w.sow), nm = r.cropName + " W" + w.wave, sel = r.runId + "|" + w.wave;
-    if (!w.init && d <= 14) o.push({d, t:"Not initiated", n:nm, sel, bad:d <= 0, when:d < 0 ? "Sow date passed " + (-d) + " d ago" : d === 0 ? "Sow today" : "Sow in " + d + " d"});
-    if (!w.init || t < w.sow) return;
-    (w.phases || []).forEach(p => { if (p.days > 0 && p.start <= t && t < p.end) o.push({d:days(t, p.end), t:p.phase + " ends", n:nm, sel, when:fmt(p.end)}); });
-    if (!r.direct && !leafOk(w) && leafDue(w, t)) o.push({d:0, t:"First-leaf check due", n:nm, sel, bad:!!(w.leaf && w.leaf.outcome === "FAIL"), when:w.leaf && w.leaf.outcome === "FAIL" ? "Failed, needs a decision" : "Not recorded"});
-    o.push({d:days(t, w.plant), t:"Transplant due", n:nm, sel, when:fmt(w.plant)});
-  });
-  return o.filter(x => x.d <= 7).sort((a, b) => a.d - b.d).slice(0, 30);
-}
-function paneWatch() {
-  const al = openAlerts(), done = D.alerts.filter(a => a.status === "RESOLVED").slice(-8).reverse(), ms = milestones();
-  const aRow = a => `<div class="al"><b>${esc(a.reason)}</b> · ${esc(a.worker_name)}<br>${esc(a.activity_name)} · ${esc(a.crop_code)} · ${esc(a.location)}<br>Open for ${tSince(a.created_at)}${a.note ? `<br><span class="k">${esc(a.note)}</span>` : ""}
-    <details><summary>Resolve</summary><p class="k">Records the exception as handled. It does not resume the worker's paused session.</p><div class="frm"><input type="text" data-d="${dk("ra", a.alert_id)}" value="${dv(dk("ra", a.alert_id))}" placeholder="What was done (required)" aria-label="Resolution note"><button type="button" class="sm" data-a="resolve" data-id="${esc(a.alert_id)}">Resolve</button></div></details></div>`;
-  return `<h2>Watchguard</h2><h3>Open stall alerts · ${al.length}</h3>${al.length ? al.map(aRow).join("") : `<p class="k">No open alerts.</p>`}
-    <h3>Milestones within 7 days of today</h3>${ms.length ? ms.map(x => `<div class="g"><span class="badge ${x.bad ? "bad" : x.d <= 2 ? "wait" : "open"}">${x.d < 0 ? "Overdue" : x.d === 0 ? "Today" : "In " + x.d + " d"}</span><span class="n"><b>${esc(x.n)}</b> · ${esc(x.t)}<br><span class="k">${esc(x.when)}</span></span><button type="button" class="alt sm" data-sel="${esc(x.sel)}">Open</button></div>`).join("") : `<p class="k">Nothing due in the next 7 days.</p>`}
-    ${done.length ? `<details><summary>Recently resolved (${done.length})</summary>${done.map(a => `<div class="k" style="padding:4px 0">${when(a.resolved_at)} · ${esc(a.worker_name)} · ${esc(a.activity_name)} · ${esc(a.reason)}${a.stall_min !== "" ? " · " + esc(a.stall_min) + " min" : ""}</div>`).join("")}</details>` : ""}`;
-}
-/* ---------- review pane: reassigned + unverified ---------- */
-function openBtn(runId, wave) {   // opens the wave that actually holds the work to verify; wave 1 only when none is given
-  const r = D.runs.find(x => x.runId === runId); if (!r || !r.waves || !r.waves.length) return "";
-  const w = (r.waves.find(x => x.wave === Number(wave)) || r.waves[0]).wave;
-  return `<button type="button" class="alt sm" data-sel="${esc(runId)}|${w}">Open${wave ? " wave " + w : ""}</button>`; }
-function paneReview() {
-  const ra = (D.assignLog || []).filter(isMove), un = D.unverified || [], dn = un.filter(x => x.done), op = un.filter(x => !x.done);
-  const chip = (a, v, cur, l, n) => `<button type="button" class="${cur === v ? "on" : "alt"}" data-a="${a}" data-v="${v}">${l} · ${n}</button>`;
-  const rrow = x => { const r = D.runs.find(y => y.runId === x.run_id), f = refOf(x.activity_id);
-    return `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activity_id)}</b> ${esc(f.name || "")}<br><span class="k">${esc(r ? r.cropName : "")} · ${esc(x.run_id)}</span></span>${openBtn(x.run_id)}</div>
-      ${f.description ? `<div class="d k">${esc(f.description)}</div>` : ""}
-      <div class="mv"><b>↔ ${esc(MOVEK[x.kind] || x.kind)}:</b> ${mvTxt({from:x.from_name, to:x.to_name, by:x.by, at:x.ts, note:x.note})}</div></div>`; };
-  const urow = x => `<div class="act rv"><div class="g" style="border:0;padding:0"><span class="n"><b>${esc(x.activityId)}</b> ${esc(x.activity)}${x.scope !== "crop-wave" ? ' <span class="badge st-attention">gate</span>' : ""}<br><span class="k">${esc(x.crop)} · ${esc(x.runId)}</span></span>${openBtn(x.runId, x.done ? (x.waves || [])[0] : 0)}</div>
-      ${x.description ? `<div class="d k">${esc(x.description)}</div>` : ""}
-      <div class="d"><span class="badge ${x.done ? "wait" : "open"}">${x.done ? "! Submitted, awaiting verification" : "○ Assigned, not submitted"}</span>${x.team.length ? " · Team: " + esc(x.team.join(", ")) : ""}${x.due ? " · Due " + fmt(x.due) : ""}</div>
-      ${x.done ? `<div class="d k">${x.pending} worker portion${x.pending > 1 ? "s" : ""} to verify${(x.waves || []).length ? " (wave" + (x.waves.length > 1 ? "s " : " ") + x.waves.join(", ") + ")" : ""} · last submitted ${when(x.completedAt)}${x.completedBy ? " by " + esc(x.completedBy) : ""}. </div>
-        ${(x.items || []).map(i => `<div class="g" style="border:0;padding:3px 0"><span class="k">${esc(i.worker)} · W${esc(i.wave)}${i.qty !== "" && i.qty != null ? " · " + esc(i.qty) + " " + esc(i.unit || "") : ""} · ${when(i.at)}</span><button type="button" class="sm" data-a="rvone" data-run="${esc(x.runId)}" data-act="${esc(x.activityId)}" data-log="${esc(i.logId)}">Verify</button></div>`).join("")}
-        ${(x.items || []).length > 1 ? `<div style="margin-top:6px"><button type="button" class="alt sm" data-a="rvact" data-run="${esc(x.runId)}" data-act="${esc(x.activityId)}">Verify all ${x.items.length} for ${esc(x.activityId)}</button></div>` : ""}` : ""}</div>`;
-  const body = RV === "reassigned"
-    ? (ra.length ? ra.slice(0, 80).map(rrow).join("") + (ra.length > 80 ? `<p class="k">Showing the latest 80. The full trail is in the Log tab.</p>` : "") : `<p class="k">No activity has been reassigned yet.</p>`)
-    : `<div class="chips">${chip("ru", "done", RU, "Done, awaiting verification", dn.length)}${chip("ru", "open", RU, "Assigned, not done", op.length)}</div>${RU === "done" && dn.reduce((n, x) => n + (x.items || []).length, 0) > 1 ? `<div style="margin:8px 0"><button type="button" data-a="rvall">Verify all ${dn.reduce((n, x) => n + (x.items || []).length, 0)} submitted portions</button></div>` : ""}${(RU === "done" ? dn : op).length ? (RU === "done" ? dn : op).map(urow).join("") : `<p class="k">${RU === "done" ? "Nothing is waiting for verification." : "Nothing assigned and open."}</p>`}`;
-  return `<h2>Review</h2><div class="chips">${chip("rv", "reassigned", RV, "Reassigned", ra.length)}${chip("rv", "unverified", RV, "Unverified", un.length)}</div>
-    <p class="k">${RV === "reassigned" ? "Every reassignment, newest first: from who, to who, by who, with the note from the manager who made it." : "Activities not yet verified or overridden by a manager. Gate activities are marked."}</p>${body}`;
-}
-function paneLog() {
-  return `<h2>Log</h2><h3>Manager actions</h3>${D.mgrLog.length ? `<div class="tw"><table><tr><th>When</th><th>Action</th><th>Where</th><th>Reason</th><th>By</th></tr>${D.mgrLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)}${x.wave ? " W" + esc(x.wave) : ""}${x.activity_id ? " · " + esc(x.activity_id) : ""}</td><td>${esc(x.reason)}</td><td>${esc(x.by)}</td></tr>`).join("")}</table></div>` : `<p class="k">No manager actions logged yet.</p>`}
-    <h3>Assignment trail</h3>${D.assignLog.length ? `<div class="tw"><table><tr><th>When</th><th>Change</th><th>Run · activity</th><th>From</th><th>To</th><th>By</th><th>Note</th></tr>${D.assignLog.map(x => `<tr><td>${when(x.ts)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc(x.run_id)} · ${esc(x.activity_id)}</td><td>${esc(x.from_name)}</td><td>${esc(x.to_name)}</td><td>${esc(x.by)}</td><td>${esc(x.note)}</td></tr>`).join("")}</table></div>` : `<p class="k">No assignments yet.</p>`}`;
-}
-
-/* ---------- Shortfall Crop: the manager enters crop, platform, planting date and waves; the server calculates everything else.
-   Field dates are checked against the Oregon window in the browser as the date is typed, and again on the server before saving. ---------- */
-const PL = {crop:"", platform:"", dob:"", waves:1, reason:"", ovr:"", prev:null, key:"", meta:null, loading:false, err:"", sf:null, sfLoading:false};
-const plKey = () => [PL.crop, PL.platform, PL.dob, PL.waves].join("|");
-const plN = () => Math.max(1, Math.min(20, parseInt(PL.waves, 10) || 1));
-const plMD = iso => +iso.slice(5, 7) * 100 + +iso.slice(8, 10);
-const plYMD = (y, md) => { const m = Math.floor(md / 100), dim = new Date(Date.UTC(y, m, 0)).getUTCDate(), d = Math.min(md % 100, dim); return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0"); };
-const plIn = (rg, iso) => { const md = plMD(iso); return rg.some(r => r.f <= r.t ? md >= r.f && md <= r.t : md >= r.f || md <= r.t); };
-function plRange(o) { return fmt(o.from) + (o.to !== o.from ? " – " + fmt(o.to) : ""); }
-function plCheck() {   // live Oregon-window check of the typed date (field only): null when nothing to check yet
-  if (PL.platform !== "F" || !PL.crop || !PL.meta) return null;
-  const c = PL.meta.find(x => x.code === PL.crop), W = c && c.win; if (!W) return null;
-  const out = {c, W, bad:[], opts:[], ready:false};
-  if (W.none || W.unparsed || !W.ranges.length || !/^\d{4}-\d{2}-\d{2}$/.test(PL.dob) || +PL.dob.slice(0, 4) < 2000) return out;
-  out.ready = true; const gap = c.gapF || 14;
-  for (let i = 0; i < plN(); i++) { const d = add(PL.dob, i * gap); if (!plIn(W.ranges, d)) out.bad.push({wave:i + 1, date:d}); }
-  if (out.bad.length) {
-    const y0 = +PL.dob.slice(0, 4), today = localToday(), all = [];
-    [y0, y0 + 1].forEach(y => W.ranges.forEach(r => { const f = plYMD(y, r.f), t = plYMD(y, r.t); if (t >= today) all.push({from: f < today ? today : f, to: t}); }));
-    out.opts = all.sort((a, b) => Math.abs(days(PL.dob, a.from)) - Math.abs(days(PL.dob, b.from))).slice(0, 4).sort((a, b) => a.from < b.from ? -1 : 1);
-  }
-  return out;
-}
-const plCalcBlocked = () => { const k = plCheck(); return !!(k && k.bad.length && !PL.ovr.trim()); };
-function plWinHtml() {
-  const k = plCheck(); if (!k) return "";
-  const nm = esc(k.c.name);
-  if (k.W.none) return `<div class="note">No Oregon window is on file for ${nm} in the field, so the planting date cannot be checked.</div>`;
-  if (k.W.unparsed) return `<div class="note">Oregon window on file for ${nm}: ${esc(k.W.text)}. It could not be read automatically, so check the dates yourself.</div>`;
-  if (!k.ready) return `<p class="k">Oregon window for ${nm} in the field: <b>${esc(k.W.text)}</b></p>`;
-  if (!k.bad.length) return `<p class="k">✓ ${plN() > 1 ? "All " + plN() + " planting dates are" : "Planting date is"} inside the Oregon window (${esc(k.W.text)}).</p>`;
-  return `<div class="al" role="alert"><b>⚠ OUTSIDE THE OREGON PLANTING WINDOW</b><br>${nm} cannot be planted on: <b>${k.bad.map(x => (plN() > 1 ? "Wave " + x.wave + " · " : "") + fmt(x.date)).join(", ")}</b><br>Allowable window: <b>${esc(k.W.text)}</b>
-    ${k.opts.length ? `<div class="k" style="margin-top:6px">Choose an allowed date range:</div><div class="row">${k.opts.map(o => `<button type="button" class="alt sm" data-pl-act="pick" data-from="${esc(o.from)}">${esc(plRange(o))}</button>`).join("")}</div>` : ""}
-    <label class="k">Or plant outside the window anyway. Reason (required) <input type="text" data-pl="ovr" value="${esc(PL.ovr)}" placeholder="Why is this date needed?"></label></div>`;
-}
-function plWin() {   // refresh only the live pieces, so the date field keeps focus while typing
-  const w = $("plwin"); if (w) w.innerHTML = plWinHtml();
-  const k = plCheck(), d = document.querySelector('[data-pl="dob"]'); if (d) { d.style.outline = k && k.bad.length ? "3px solid var(--bad)" : ""; d.setAttribute("aria-invalid", k && k.bad.length ? "true" : "false"); }
-  const c = document.querySelector('[data-pl-act="calc"]'); if (c) c.disabled = plCalcBlocked();
-  const s = document.querySelector('[data-pl-act="save"]'); if (s) s.disabled = plBlocked();
-  const st = $("plstale"); if (st) st.classList.toggle("hidden", !(PL.prev && PL.key !== plKey()));
-}
-function plBlocked() {
-  const s = PL.prev; if (!s || PL.key !== plKey()) return true;
-  return s.schedule.some(w => w.savedRun) || (s.schedule.some(w => w.inWindow === false) && !PL.ovr.trim()) || (s.schedule.some(w => !w.inPlan && !w.extra) && !PL.reason.trim());
-}
-async function plMeta() {
-  if (PL.loading) return; PL.loading = true;
-  const r = await write("Loading crops", () => post({action:"meta"}));
-  PL.loading = false; if (r && r.crops) PL.meta = r.crops.filter(c => c.platforms.length).sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  else PL.err = "Could not load the crop list. Press Refresh and open this tab again.";
-  if (TAB === "plan") side();
-}
-async function plShort() {
-  if (PL.sfLoading) return; PL.sfLoading = true;
-  try { PL.sf = (await post({action:"shortfall"})).years || []; } catch (e) { PL.sf = []; toast(e.message, true); }
-  PL.sfLoading = false; if (TAB === "plan") side();
-}
-function shortfallBlock() {
-  if (!PL.sf) { if (!PL.sfLoading) plShort(); return `<h3>Shortfall Crops by year</h3><p class="k">Loading…</p>`; }
-  if (!PL.sf.length) return `<h3>Shortfall Crops by year</h3><p class="k">None yet. Any wave added outside the season plan is listed here, by the year it is planted.</p>`;
-  return `<h3>Shortfall Crops by year</h3><p class="k">Crops that needed extra waves beyond the plan. Use these when you build next season's plan.</p>` + PL.sf.map((y, i) => `<details ${i === 0 ? "open" : ""}><summary><b>Shortfall Crops ${esc(y.year)}</b> · ${y.crops.length} crop${y.crops.length > 1 ? "s" : ""} · ${y.added} extra wave${y.added > 1 ? "s" : ""}</summary>
-    <div class="tw"><table><tr><th>Crop</th><th>Platform</th><th>Planned</th><th>Added</th><th>Planting dates</th><th>Why</th></tr>${y.crops.map(c => `<tr><td><b>${esc(c.cropName)}</b></td><td>${esc(pf(c.platform))}</td><td>${c.planned}</td><td><b>+${c.added}</b></td><td>${c.dates.map(fmt).join("<br>")}</td><td>${c.reasons.map(esc).join("<br>")}${c.outsideWindow ? `<br><span class="badge st-attention">${c.outsideWindow} outside window</span>` : ""}</td></tr>`).join("")}</table></div></details>`).join("");
-}
-function panePlan() {
-  if (!PL.meta) { if (!PL.loading && !PL.err) plMeta(); return `<h2>Shortfall Crop</h2><p class="k">${esc(PL.err || "Loading crops…")}</p>`; }
-  const c = PL.meta.find(x => x.code === PL.crop), plats = c ? c.platforms : [];
-  const form = `<h2>Shortfall Crop</h2><p class="k">Extra propagation for a crop that needs more than the season plan. Enter the crop, platform, planting date and waves. The system works out sow date, phases, trays, material and where it is propagated and planted.</p>
-  <div class="frm"><label class="k">Crop <select data-pl="crop"><option value="">Choose a crop…</option>${PL.meta.map(x => `<option value="${esc(x.code)}" ${x.code === PL.crop ? "selected" : ""}>${esc(x.name)} (${esc(x.code)})</option>`).join("")}</select></label>
-  <label class="k">Location / platform <select data-pl="platform" ${c ? "" : "disabled"}><option value="">Choose…</option>${plats.map(x => `<option value="${esc(x)}" ${x === PL.platform ? "selected" : ""}>${esc(pf(x))}</option>`).join("")}</select></label>
-  <label class="k">Planting date <input type="date" data-pl="dob" value="${esc(PL.dob)}"></label>
-  <label class="k">Number of waves <input type="number" min="1" max="20" step="1" data-pl="waves" value="${esc(PL.waves)}"></label></div>
-  <div id="plwin">${plWinHtml()}</div>
-  <div class="row"><button type="button" data-pl-act="calc" ${plCalcBlocked() ? "disabled" : ""}>Calculate</button></div>${PL.err ? `<div class="note" role="alert">${esc(PL.err)}</div>` : ""}`;
-  const s = PL.prev; if (!s) return form + shortfallBlock();
-  const F = s.platform === "F", w0 = s.schedule[0];
-  const extra = s.schedule.some(w => !w.inPlan && !w.extra), dup = s.schedule.filter(w => w.savedRun);
-  const facts = `<div class="facts"><div><span class="k">Sow date</span><b>${fmt(w0.sow)}</b></div><div><span class="k">${s.direct ? "Seeding date" : "Transplant (DOB)"}</span><b>${fmt(w0.plant)}</b></div>
-  <div><span class="k">Trays</span><b>${s.traysPerWave ? s.traysPerWave + (s.trayCells ? " · " + s.trayCells + "-cell" : "") : "None (direct)"}</b></div><div><span class="k">Material per wave</span><b>${w0.material ? Number(w0.material).toLocaleString() : "Bulk"}</b></div>
-  <div><span class="k">Propagation</span><b>${esc(s.propagationLocation || "Bypasses nursery")}</b></div><div><span class="k">Goes to</span><b>${esc(s.plantingLocation)}${s.bedAssignment ? " · bed " + esc(s.bedAssignment) : ""}</b></div>
-  <div><span class="k">Waves · spacing</span><b>${s.waves} · every ${s.gapDays} d</b></div><div><span class="k">Platform</span><b>${esc(pf(s.platform))}${s.runType === "ADDITIONAL" ? " (unplanned)" : ""}</b></div></div>`;
-  const rows = `<div class="tw"><table><tr><th>Wave</th><th>Sow</th><th>${s.direct ? "Seed" : "Transplant"}</th><th>Plan</th>${F ? "<th>Oregon window</th>" : ""}</tr>${s.schedule.map(w => `<tr><td>W${w.wave}</td><td>${fmt(w.sow)}</td><td>${fmt(w.plant)}</td><td>${esc(w.planStatus)}</td>${F ? `<td>${w.inWindow === false ? "<b>✕ Outside</b>" : w.inWindow === true ? "✓ Inside" : "No window on file"}</td>` : ""}</tr>`).join("")}</table></div>`;
-  const ph = (w0.phases || []).length ? `<details><summary>Propagation phases (wave 1)</summary><table><tr><th>Phase</th><th>Days</th><th>Starts</th><th>Ends</th></tr>${w0.phases.map(p => `<tr><td>${esc(p.phase)}</td><td>${p.days}</td><td>${fmt(p.start)}</td><td>${fmt(p.end)}</td></tr>`).join("")}</table></details>` : "";
-  const why = extra ? `<label class="k">Why is this extra needed? (required) <input type="text" data-pl="reason" value="${esc(PL.reason)}" placeholder="e.g. unexpected demand"></label><p class="k">Not in the season plan: saved as a <b>Shortfall Crop for ${(s.shortfallYears || []).map(esc).join(" / ")}</b> and recorded in Planting_Plan.</p>` : `<p class="k">Every wave is already in the season plan.</p>`;
-  const flags = s.flags.filter(f => !/outside the Oregon/.test(f)).map(f => `<div class="note">${esc(f)}</div>`).join("");
-  return form + `<h3>${esc(s.cropName)} · ${esc(pf(s.platform))}</h3><div id="plstale" class="note ${PL.key !== plKey() ? "" : "hidden"}">Inputs changed. Press Calculate again.</div>${facts}${rows}${ph}${why}${flags}
-  <div class="row"><button type="button" data-pl-act="save" ${plBlocked() ? "disabled" : ""}>Save Shortfall Crop</button>${dup.length ? `<span class="k">Already covered by run ${esc(dup[0].savedRun)}.</span>` : ""}</div>` + shortfallBlock();
-}
-async function plCalc() {
-  PL.err = ""; if (!PL.crop || !PL.platform || !PL.dob) { PL.err = "Choose a crop, a platform and a planting date."; return side(); }
-  if (plCalcBlocked()) return;
-  PL.waves = plN();
-  const r = await write("Calculating", () => post({action:"plan", crop:PL.crop, platform:PL.platform, dob:PL.dob, waves:PL.waves}));
-  PL.prev = r || null; PL.key = r ? plKey() : ""; side();
-}
-async function plSave() {
-  const s = PL.prev; if (!s || PL.key !== plKey() || plBlocked()) return;
-  if (!confirm(`Save Shortfall Crop: ${s.cropName} (${pf(s.platform)}) · ${s.waves} wave${s.waves > 1 ? "s" : ""} from ${s.schedule[0].plant}?` + (s.outOfWindow ? "\n\nThis is OUTSIDE the Oregon planting window. Your reason will be logged." : ""))) return;
-  const r = await write("Saving", () => post({action:"saveRun", crop:PL.crop, platform:PL.platform, dob:PL.dob, waves:PL.waves, noDup:true, mgrForm:true, reason:PL.reason.trim(), windowOverride:PL.ovr.trim()}));
-  if (!r || !r.runId) return;
-  toast("Shortfall Crop saved · run " + r.runId); PL.sf = null; PL.prev = null; PL.key = ""; PL.reason = ""; PL.ovr = "";
-  await load(true); if (D && D.runs.some(x => x.runId === r.runId)) pick(r.runId, 1); render();
-}
-document.addEventListener("input", e => {   // typing: alarm and buttons update at once, nothing re-renders, so focus stays in the field
-  const k = e.target.dataset && e.target.dataset.pl; if (!k) return;
-  if (k === "dob" || k === "waves" || k === "reason" || k === "ovr") { PL[k] = e.target.value; plWin(); }
-});
-document.addEventListener("change", e => {
-  const k = e.target.dataset && e.target.dataset.pl; if (!k) return;
-  PL[k] = e.target.value;
-  if (k === "crop") { const c = PL.meta && PL.meta.find(x => x.code === PL.crop); PL.platform = c && c.platforms.length === 1 ? c.platforms[0] : ""; }
-  if (k === "crop" || k === "platform") { PL.ovr = ""; side(); } else plWin();
-});
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-pl-act]"); if (!b) return; LAST = Date.now(); const a = b.dataset.plAct;
-  if (a === "calc") plCalc(); else if (a === "save") plSave();
-  else if (a === "pick") { PL.dob = b.dataset.from; const d = document.querySelector('[data-pl="dob"]'); if (d) d.value = PL.dob; plWin(); }
-});
-
-function side() {
-  if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
-  const tabs = [["waves", "Waves", ""], ["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["plan", "Shortfall Crop", ""], ["log", "Log", ""]];
-  $("tabs").innerHTML = tabs.map(([v, l, n]) => `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-a="tab" data-tab="${v}">${l}${n ? " (" + n + ")" : ""}</button>`).join("");
-  $("pane").innerHTML = TAB === "waves" ? wavesList() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : TAB === "plan" ? panePlan() : paneLog();
-}
-
-/* ---------- render ---------- */
-function render(soft) {
-  if (ERR && !D) { $("note").textContent = ERR; $("note").classList.remove("hidden"); } else if (MODE === "live") $("note").classList.add("hidden");
-  else if (ERR) { $("note").textContent = ERR + " Showing the last snapshot."; $("note").classList.remove("hidden"); }
-  if (D) { RI = roomItems(T); }
-  header(); connBar(); kpis(); matrix();
-  const ae = document.activeElement; if (!(soft && ae && $("pane").contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))) side();
-}
-function toast(m, bad) { const el = $("toast"); el.textContent = m; el.classList.remove("hidden"); el.style.background = bad ? "var(--bad)" : ""; el.style.color = bad ? "#fff" : ""; clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add("hidden"), bad ? 7000 : 2800); }
-function pick(id, w) { if (!SEL || SEL.runId !== id) { PICK.clear(); WPICK.clear(); } SEL = {runId:id, wave:+w}; TAB = "wave"; }
-
-/* ---------- manager actions ---------- */
-const cur = () => { const r = SEL && runs().find(x => x.runId === SEL.runId); return r ? {r, w: r.waves.find(x => x.wave === SEL.wave), rs: RS[r.runId]} : null; };
+const cur = () => { const r = SEL && B.runs.find(x => x.runId === SEL.runId); return r ? {r, w: r.waves.find(x => x.wave === SEL.wave), rs: RS[r.runId]} : null; };
 async function done(rs, msg) { if (rs) { applyRun(rs); toast(msg); } render(); load(true); }
 async function doVerify(id) {
   const c = cur(); if (!c) return; const notes = (DRAFT[dk("n", c.r.runId, id)] || "").trim();
@@ -788,20 +759,6 @@ async function doVerify(id) {
 async function doVerifyWork(id, logId) {
   const c = cur(); if (!c) return; const k = dk("n", c.r.runId, logId), notes = (DRAFT[k] || "").trim();
   const rs = await write("Verifying " + id, () => post({action:"verifyWork", runId:c.r.runId, activityId:id, logId, notes})); if (rs) delete DRAFT[k]; done(rs, "Portion verified · " + id);
-}
-function rvItems(run, act, log) {   // submitted, unverified worker portions from the Review list
-  const out = []; (D.unverified || []).forEach(x => { if ((run && x.runId !== run) || (act && x.activityId !== act)) return; (x.items || []).forEach(i => { if (!log || i.logId === log) out.push({run:x.runId, act:x.activityId, name:x.activity, log:i.logId, who:i.worker, wave:i.wave}); }); });
-  return out; }
-async function doRvVerify(list) {
-  if (!list.length) return toast("Nothing is waiting for verification.", true);
-  if (!confirm(`Verify ${list.length} submitted worker portion${list.length > 1 ? "s" : ""}?\n\n${list.map(i => i.act + " " + i.name + " · " + i.who + " · W" + i.wave).join("\n")}\n\nEach is recorded separately under ${M.name}.`)) return;
-  let rs = null, n = 0, sk = 0;   // one server call per run (not one per portion): far faster, and safe to retry
-  for (const run of [...new Set(list.map(i => i.run))]) {
-    const items = list.filter(i => i.run === run);
-    const r = await write(`Verifying ${items.length} portion${items.length > 1 ? "s" : ""}`, () => post({action:"verifyWorkMany", runId:run, notes:"Verified in review", items: items.map(i => ({activityId:i.act, logId:i.log}))}));
-    if (!r) break; rs = r; n += r.verified || 0; sk += (r.skipped || []).length; applyRun(r);
-  }
-  done(rs, n + " portion" + (n === 1 ? "" : "s") + " verified" + (sk ? " (" + sk + " already done or skipped)" : ""));
 }
 async function verifyBatch(items, notes) {   // ONE server call for all portions of the open run (was one call per portion: slow, and it stopped part-way)
   const c = cur(); if (!c || !c.rs || !items.length) return null;
@@ -813,13 +770,13 @@ async function doVerifyPhase(phase) {   // every submitted, unverified worker po
   const c = cur(); if (!c || !c.rs || !c.w) return; const items = [];
   c.rs.activities.filter(a => a.scope === "crop-wave" && !a.overridden && (a.phase || "Activities") === phase).forEach(a => { const p = (a.portions || []).find(x => x.wave === c.w.wave); if (p) p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); }); });
   if (!items.length) return toast("Nothing submitted is waiting for verification on this wave.", true);
-  if (!confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""} for wave ${c.w.wave}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nEach is recorded separately under ${M.name}.`)) return;
+  if (!confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""} for wave ${c.w.wave}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nEach is recorded separately under ${ME.name}.`)) return;
   const rs = await verifyBatch(items, "Verified in phase review"); done(rs, verifiedMsg(rs));
 }
 async function doVerifyAll() {   // gate steps only: every submitted worker portion on the pre-sowing and post-transplant gates
   const c = cur(); if (!c || !c.rs) return; const items = [];
   c.rs.activities.filter(a => a.scope !== "crop-wave" && !a.overridden).forEach(a => (a.portions || []).forEach(p => p.workers.forEach(x => { if (x.submitted && !x.verified) items.push({a, x}); })));
-  if (!items.length || !confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nThis is recorded under ${M.name}.`)) return;
+  if (!items.length || !confirm(`Verify ${items.length} submitted worker portion${items.length > 1 ? "s" : ""}?\n\n${items.map(i => i.a.id + " " + i.a.name + " · " + i.x.name).join("\n")}\n\nThis is recorded under ${ME.name}.`)) return;
   const rs = await verifyBatch(items, "Bed verified ready"); done(rs, verifiedMsg(rs));
 }
 async function doClose(id) {
@@ -835,7 +792,7 @@ async function doOverride(id) {
   const c = cur(); if (!c) return; const run = c.r.runId, why = (DRAFT[dk("o", run, id)] || "").trim(), a = c.rs && c.rs.activities.find(x => x.id === id), gate = a ? a.scope !== "crop-wave" : true;
   if (!why) return toast("Type the explanation for the override first. It is required and is logged.", true);
   const open = a ? (a.sessions || []).length : 0, pend = a ? (a.pending || 0) : 0;
-  if (!confirm(`Override ${id}${a ? " " + a.name : ""} on run ${run}?\n\n` + (gate ? "The gate counts as cleared without being completed and verified, so it stops blocking the run." : "The activity counts as complete for every wave of this run. Workers can no longer start it.") + ` Your explanation is logged under ${M.name}. The board cannot undo an override.` + (pend ? `\n\n${pend} submitted worker portion${pend > 1 ? "s are" : " is"} not verified yet; they will stay in the ledger but no longer block anything.` : "") + (open ? `\n\n${open} worker session${open > 1 ? "s are" : " is"} still open and can still be closed.` : "") + `\n\nExplanation: ${why}`)) return;
+  if (!confirm(`Override ${id}${a ? " " + a.name : ""} on run ${run}?\n\n` + (gate ? "The gate counts as cleared without being completed and verified, so it stops blocking the run." : "The activity counts as complete for every wave of this run. Workers can no longer start it.") + ` Your explanation is logged under ${ME.name}. The board cannot undo an override.` + (pend ? `\n\n${pend} submitted worker portion${pend > 1 ? "s are" : " is"} not verified yet; they will stay in the ledger but no longer block anything.` : "") + (open ? `\n\n${open} worker session${open > 1 ? "s are" : " is"} still open and can still be closed.` : "") + `\n\nExplanation: ${why}`)) return;
   const rs = await write("Overriding " + id, () => post({action:"override", runId:run, activityId:id, reason:why})); if (rs) delete DRAFT[dk("o", run, id)]; done(rs, "Overridden " + id);
 }
 async function doLeaf(o) {
@@ -861,8 +818,8 @@ async function doReassign(id) {
   if (!ids.length) return toast("Tick who it goes to.", true);
   if (a.assignee && ids.slice().sort().join(";") === (a.assigneeIds || []).map(String).sort().join(";")) return toast("That is the same team. Tick a different worker first.", true);
   if (a.assignee && !note) return toast("Write a short note explaining the reassignment first. It is required and is kept in the trail.", true);
-  const to = D.workers.filter(x => ids.includes(String(x.id))).map(x => x.name).join(", "), from = String(a.assignee || "Unassigned").replace(/;\s*/g, ", ");
-  if (a.assignee && !confirm(`Reassign ${id} ${a.name}?\n\nFrom: ${from}\nTo: ${to}\nBy: ${M.name}\nNote: ${note}` + (a.sessions && a.sessions.length ? "\n\nA worker is mid-session on this activity. They can still close it." : ""))) return;
+  const to = B.workers.filter(x => ids.includes(String(x.id))).map(x => x.name).join(", "), from = String(a.assignee || "Unassigned").replace(/;\s*/g, ", ");
+  if (a.assignee && !confirm(`Reassign ${id} ${a.name}?\n\nFrom: ${from}\nTo: ${to}\nBy: ${ME.name}\nNote: ${note}` + (a.sessions && a.sessions.length ? "\n\nA worker is mid-session on this activity. They can still close it." : ""))) return;
   const rs = await write("Reassigning " + id, () => post({action:"assign", runId:run, activityIds:[id], workerIds:ids, note}));
   if (rs) { delete RW[key]; delete DRAFT[nk]; } done(rs, a.assignee ? "Reassigned " + id : "Assigned " + id);
 }
@@ -872,21 +829,99 @@ async function doFixMove(id) {
   const keep = (a.assignees || []).filter(x => x.name === l.to), drop = (a.assignees || []).filter(x => x.name !== l.to);
   if (!keep.length || !drop.length) return toast("Nothing to remove.", true);
   const note = (l.note || "Previous owner removed").slice(0, 300);
-  if (!confirm(`Make ${id} a full reassignment?\n\nFrom: ${drop.map(x => x.name).join(", ")}\nTo: ${keep.map(x => x.name).join(", ")}\nBy: ${M.name}\nNote: ${note}\n\n${drop.map(x => x.name).join(", ")} will no longer be accountable for it.`)) return;
+  if (!confirm(`Make ${id} a full reassignment?\n\nFrom: ${drop.map(x => x.name).join(", ")}\nTo: ${keep.map(x => x.name).join(", ")}\nBy: ${ME.name}\nNote: ${note}\n\n${drop.map(x => x.name).join(", ")} will no longer be accountable for it.`)) return;
   const rs = await write("Removing previous owner", () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:keep.map(x => x.id).filter(Boolean), note}));
   done(rs, "Previous owner removed from " + id);
 }
-async function doInit() {
-  const c = cur(); if (!c || !c.w) return;
-  const r = await write("Initiating wave… this can take 10 to 20 seconds", () => post({action:"initWaves", runId:c.r.runId, waves:[c.w.wave]}));
-  if (r) { c.w.init = {at:new Date().toISOString(), by:M.name}; delete RS[c.r.runId]; toast("Wave initiated"); } render(); load(true);
+function paneAct(d) {   // clicks on the wave pane's data-a buttons
+  switch (d.a) {
+    case "filt": RFILT = d.f; room(); break;
+    case "kpiatt": WF = "attention"; goTab("waves"); break;
+    case "kpibench": RV = "bench"; goTab("room"); break;
+    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (isFin(a) || (a.hold && !a.assignee)) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); prof(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
+    case "rgo": doReassign(d.id); break; case "fixmove": doFixMove(d.id); break;
+    case "dropw": doDropWorker(d.id, d.who); break; case "reassignw": doReassignWorker(d.id, d.who); break; case "verify": doVerify(d.id); break; case "vw": doVerifyWork(d.id, d.log); break; case "verifyphase": doVerifyPhase(d.p); break; case "verifyall": doVerifyAll(); break;
+    case "close": doClose(d.id); break; case "override": doOverride(d.id); break;
+    case "leaf": doLeaf(d.o); break; case "assign": doAssign(); break;
+    case "init": { const c = cur(); if (c && c.w) initWaves(c.r.runId, c.w.wave); break; }
+  }
 }
-async function doResolve(id) {
-  const note = (DRAFT[dk("ra", id)] || "").trim(); if (!note) return toast("Type what was done first. It is required and is logged.", true);
-  const r = await write("Resolving alert", () => post({action:"resolveAlert", alertId:id, note})); if (r) { delete DRAFT[dk("ra", id)]; toast("Alert resolved"); } render(); load(true);
+const LOADING = {}, QI = [];
+async function loadRun(id) { LOADING[id] = 1; try { RS[id] = await get({action:"run", runId:id}); } catch (e) { RS[id] = {activities: []}; toast(e.message, true); } delete LOADING[id]; prof(); }
+function queue() {
+  const items = flat().map(({r, w}) => { const d = days(T, w.sow), [k] = stat(r, w, T);
+    if (T >= w.plant) return null;
+    if (!w.init && d <= 14) return {r, w, d, why: d < 0 ? "Sow date passed, wave not initiated" : "Not initiated, sow in " + d + " d", p: d <= 3 ? "must" : d <= 7 ? "att" : "rtn", init: true};
+    if (k === "exc") return {r, w, d, why: "Gate activities need completing and verifying", p: "att"};
+    return null; }).filter(Boolean);
+  if (B.gaps) B.gaps.groups.forEach(g => { if (g.error) return; g.items.forEach(i => { if (!gapLive(i)) return; const sow = gapSow(g, i.date), d = days(T, sow); if (d > 14) return;
+    items.push({gap: true, g, i, sow, d, why: d < 0 ? "No run, sow date passed" : d === 0 ? "No run, sow today" : "No run, sow in " + d + " d", p: d <= 3 ? "must" : d <= 7 ? "att" : "rtn"}); }); });
+  B.runs.forEach(r => { if (!r.error && r.acts.awaiting > 0) items.push({ver: true, r, w: awWave(r), d: days(T, awWave(r).sow), p: "att", why: `${r.acts.awaiting} activit${r.acts.awaiting > 1 ? "ies" : "y"} done, awaiting verification (wave ${awWave(r).wave})`}); });
+  items.sort((a, b) => (b.ver ? 1 : 0) - (a.ver ? 1 : 0) || a.d - b.d);   // finished work waiting on the manager goes first (a worker is blocked), then by sow date
+  const shown = QALL ? items : items.slice(0, 30);   // the plan can leave dozens of unrun plantings due at once, so show the most urgent first
+  QN = items.length; tabs(); QI.length = 0; shown.filter(i => i.init).forEach(i => QI.push(i));
+  const lab = {must: "Must do", att: "Attention", rtn: "Routine"}, todo = [...new Set(shown.filter(i => i.init).map(i => i.r.runId))];
+  const row = i => i.gap ? `<div class="q"><span class="pri ${i.p}">${lab[i.p]}</span><span class="n"><b>${esc(i.g.cropName)} (${pf(i.g.platform)}), plant ${fmt(i.i.date)}</b> <span class="k">${esc(i.why)} · sow ${fmt(i.sow)}</span></span><button type="button" data-mk="${esc(i.g.crop + "|" + i.g.platform)}|${i.i.date}">Create run</button></div>`
+    : i.ver ? `<div class="q"><span class="pri ${i.p}">${lab[i.p]}</span><span class="n"><b>${esc(i.r.cropName)} · run ${esc(i.r.runId)}</b> <span class="k">${esc(i.why)}</span></span><button type="button" class="alt" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button></div>`
+    : `<div class="q"><span class="pri ${i.p}">${lab[i.p]}</span><span class="n"><b>${esc(i.r.cropName)} wave ${i.w.wave}</b> <span class="k">${esc(i.why)} · sow ${fmt(i.w.sow)}</span></span><button type="button" class="alt" data-sel="${esc(i.r.runId)}|${i.w.wave}">Open</button>${i.init ? `<button type="button" data-init="${esc(i.r.runId)}|${i.w.wave}">Initiate</button>` : ""}</div>`;
+  $("qp").innerHTML = `<div class="row" style="margin-top:0"><h2 style="margin:0">Assignment queue</h2>${todo.length ? `<button type="button" data-initq="1">Initiate all listed waves</button>` : ""}</div>
+  ${items.length ? shown.map(row).join("") + (items.length > 30 ? `<div class="row"><button type="button" class="alt" data-qall="${QALL ? 0 : 1}">${QALL ? "Show only the 30 most urgent" : "Show all " + items.length}</button><span class="k">Most urgent first.</span></div>` : "") : `<p class="k">Nothing waiting. Every planting due to sow in the next 14 days has a run and is initiated, and nothing is awaiting verification.</p>`}`;
 }
-
-/* ---------- events ---------- */
+async function initWaves(runId, waves) {
+  const set = waves === "all" ? null : [].concat(waves).map(Number), btns = document.querySelectorAll("button"); btns.forEach(b => b.disabled = true); toast("Initiating… this can take 10 to 20 seconds");
+  try { await post({action:"initWaves", runId, waves, user:user()});
+    const r = B.runs.find(x => x.runId === runId); r.waves.forEach(w => { if ((!set || set.includes(w.wave)) && !w.init) w.init = {at: new Date().toISOString(), by: user() || "manager"}; });
+    delete RS[runId]; toast("Initiated"); render(); load(true);
+  } catch (e) { toast(e.message, true); } finally { btns.forEach(b => b.disabled = false); }
+}
+function pickRun(id, w) { if (!SEL || SEL.runId !== id) PICK.clear(); SEL = {runId: id, wave: w}; }
+document.addEventListener("change", e => { const t = e.target.dataset || {};
+  if (t.pick) { e.target.checked ? PICK.add(t.pick) : PICK.delete(t.pick); prof(); }
+  if (t.wk) { e.target.checked ? WPICK.add(t.wk) : WPICK.delete(t.wk); prof(); }
+  if (t.rw) { const [run, id, wid] = t.rw.split("|"), key = run + "|" + id, st = RW[key] || (RW[key] = new Set()); e.target.checked ? st.add(wid) : st.delete(wid); prof(); }
+  if (e.target.id === "urg") { URG = e.target.checked; gaps(); } });
+document.addEventListener("input", e => { const t = e.target.dataset || {}, r = SEL && SEL.runId;
+  if (t.d) DRAFT[t.d] = e.target.value; });
+document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.g; if (k) e.target.open ? OPENG.add(k) : OPENG.delete(k); }, true);
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return; const d = b.dataset, rs = SEL && RS[SEL.runId];
+  if (d.tab) goTab(d.tab);
+  else if (d.wf) { WF = d.wf; wavesList(); }
+  else if (d.rview) { RV = d.rview; room(); }
+  else if (d.sel) { const [id, w] = d.sel.split("|"); pickRun(id, +w); TRAY = null; render(); goTab("wave"); }
+  else if (d.tray !== undefined) { const c = CELLS[+d.tray]; pickRun(c.r.runId, c.w.wave); TRAY = +d.tray; render(); }
+  else if (d.init) { const [id, w] = d.init.split("|"); initWaves(id, w === "all" ? "all" : +w); }
+  else if (d.initq) { const by = {}; QI.forEach(i => (by[i.r.runId] = by[i.r.runId] || []).push(i.w.wave)); for (const [id, ws] of Object.entries(by)) await initWaves(id, ws); }
+  else if (d.day !== undefined) { T = d.day === "0" ? localToday() : add(T, +d.day); TRAY = null; render(); }
+  else if (d.peak) { T = d.peak; TRAY = null; render(); }
+  else if (d.a) paneAct(d);
+  else if (d.mk) { const [c, pl, dt] = d.mk.split("|"), g = grp(c + "|" + pl);
+    if (g && confirm(`Create a run for ${g.cropName} (${pf(pl)}), planting date ${fmt(dt)}?\n\nIt starts with this one date. Runs cannot be deleted from the board.`)) mkRuns(c + "|" + pl, [dt]); }
+  else if (d.mkall) { const g = grp(d.mkall), l = g ? gapList(g).filter(gapLive).map(x => x.date) : [];
+    if (l.length && confirm(`Create ${l.length} separate runs for ${g.cropName} (${pf(g.platform)}), one per planting date?\n\nEach takes several seconds. Runs cannot be deleted from the board.`)) mkRuns(d.mkall, l); }
+  else if (d.cl) { CL = d.cl; CD = null; calendar(); }
+  else if (d.cv) { CV = d.cv; calendar(); }
+  else if (d.cp !== undefined) { CP = d.cp; calendar(); }
+  else if (d.cm !== undefined) { if (d.cm === "0") { CM = localToday().slice(0, 7); } else { const y = +CM.slice(0, 4), m = +CM.slice(5, 7) - 1 + +d.cm, x = new Date(Date.UTC(y, m, 1)); CM = x.toISOString().slice(0, 7); } CD = null; calendar(); }
+  else if (d.cd) { CD = d.cd; CM = d.cd.slice(0, 7); CV = "month"; calendar(); }
+  else if (d.tload) loadTeam();
+  else if (d.tclose) { TNOTE = ""; goTab("cal"); }
+  else if (d.tadd) { const nm = $("tn").value.trim(), wp = $("tp").value.trim();
+    if (!nm) return toast("Type the worker's name.", true);
+    if (wp && !/^\d{4,8}$/.test(wp)) return toast("The PIN must be 4 to 8 digits, or leave it blank to generate one.", true);
+    teamAct({action:"addWorker", name:nm, workerId:$("ti").value.trim(), workerPin:wp, role:$("tr").value}, b); }
+  else if (d.treset) { const w = TM && TM.workers.find(x => x.id === d.treset);
+    if (w && confirm(`Reset the PIN for ${w.name} (${w.id})?\n\nTheir current PIN stops working at the next sign-in and a new one is generated. It is shown once.`)) teamAct({action:"resetPin", workerId:d.treset}, b); }
+  else if (d.lload !== undefined) { LAB = null; loadLab(); }
+  else if (d.lclose !== undefined) goTab("cal");
+  else if (d.lshow) { LB.show = d.lshow; labPreset(); labor(); }
+  else if (d.lview) { LB.view = d.lview; labor(); }
+  else if (d.lcsv !== undefined) labCsv();
+  else if (d.ccsv) calCsv();
+  else if (d.cprint) window.print();
+  else if (d.qall !== undefined) { QALL = d.qall === "1"; queue(); }
+});
+document.addEventListener("change", e => { if (e.target.id === "lf" || e.target.id === "lt") { LB[e.target.id === "lf" ? "from" : "to"] = e.target.value || LB[e.target.id === "lf" ? "from" : "to"]; LB.show = ""; labor(); } });
 
 /* ---------- add activity (manager): the server assigns ID, group, timing, scope ---------- */
 function addActErr(m) { const el = $("aae"); el.textContent = m || ""; el.classList.toggle("hidden", !m); }
@@ -909,57 +944,24 @@ $("addact").addEventListener("click", e => { if (e.target === $("addact")) close
 $("aan").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("aad").focus(); } });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("addact").classList.contains("hidden")) closeAddAct(); });
 document.addEventListener("click", e => { if (e.target.closest("[data-addact]")) openAddAct(); });
-const ADDACT_REFRESH = async () => { const id = SEL && SEL.runId; RS = {}; await load(true); if (id) await loadRun(id); };
-document.addEventListener("click", e => {
-  LAST = Date.now(); const b = e.target.closest("[data-a],[data-sel]"); if (!b) return; const d = b.dataset;
-  if (d.sel) { const [id, w] = d.sel.split("|"); pick(id, w); render(); const rr = runs().find(x => x.runId === id); toast((rr ? rr.cropName : id) + " W" + w + " opened");
-    const sd = $("side"), bx = sd.getBoundingClientRect(); if (window.innerWidth <= 980 || bx.top < 0 || bx.top > innerHeight * .7) sd.scrollIntoView({behavior:"smooth", block:"start"}); return; }
-  switch (d.a) {
-    case "sync": FORCED ? goLive() : load(); break;
-    case "switch": exitManager(); if (MODE === "live") openLogin(); else toast("Go live first, then sign in as the other manager.", true); break; case "offline": goOffline(); break; case "live": goLive(); break;
-    case "mgr": M ? exitManager("Signed out") : openLogin(); break;
-    case "login": doLogin(); break; case "loginx": $("login").classList.add("hidden"); break;
-    case "theme": { const n = document.documentElement.dataset.theme === "night" ? "sun" : "night"; document.documentElement.dataset.theme = n; LS.set("pm_theme", n); header(); break; }
-    case "tab": TAB = d.tab; if (d.rv) RV = d.rv; if (d.ru) RU = d.ru; side(); break;
-    case "filt": FILT = d.f; render(true); break;
-    case "kpiatt": FILT = "attention"; TAB = "waves"; render(true); side(); break;
-    case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
-    case "crewv": CREW = d.v; side(); break;
-    case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (isFin(a) || (a.hold && !a.assignee)) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
-    case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
-    case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
-    case "rvone": if (gate()) doRvVerify(rvItems(d.run, d.act, d.log)); break; case "rvact": if (gate()) doRvVerify(rvItems(d.run, d.act)); break; case "rvall": if (gate()) doRvVerify(rvItems()); break;
-    case "dropw": if (gate()) doDropWorker(d.id, d.who); break; case "reassignw": if (gate()) doReassignWorker(d.id, d.who); break; case "verify": if (gate()) doVerify(d.id); break; case "vw": if (gate()) doVerifyWork(d.id, d.log); break; case "verifyphase": if (gate()) doVerifyPhase(d.p); break; case "verifyall": if (gate()) doVerifyAll(); break;
-    case "close": if (gate()) doClose(d.id); break; case "override": if (gate()) doOverride(d.id); break;
-    case "leaf": if (gate()) doLeaf(d.o); break; case "assign": if (gate()) doAssign(); break;
-    case "init": if (gate()) doInit(); break; case "resolve": if (gate()) doResolve(d.id); break;
-  }
-});
-document.addEventListener("change", e => {
-  const t = e.target, d = t.dataset || {};
-  if (d.pick) { t.checked ? PICK.add(d.pick) : PICK.delete(d.pick); const c = cur(); if (c) side(); }
-  else if (d.rw) { const [run, id, wid] = d.rw.split("|"), key = run + "|" + id, rs = RS[run], a = rs && rs.activities.find(x => x.id === id);
-    const s = RW[key] || (RW[key] = new Set()); t.checked ? s.add(wid) : s.delete(wid); side(); }
-  else if (d.wk) { t.checked ? WPICK.add(d.wk) : WPICK.delete(d.wk); const c = cur(); if (c) side(); }
-  else if (t.id === "day") { T = t.value || T; render(); }
-  else if (t.id === "cf") { CF = t.value; render(true); }
-  else if (t.id === "sq") { SQ = Math.max(0.5, +t.value || 1.55); LS.set("pm_sq", SQ); render(true); }
-});
-document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.d; if (k) DRAFT[k] = e.target.value; });
-["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { LAST = Date.now(); }, {passive:true}));
-$("lp").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
-document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target && e.target.id === "lu") { e.preventDefault(); $("lp").focus(); } });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && M) $("login").classList.add("hidden"); });
-
-/* ---------- boot ---------- */
-document.documentElement.dataset.theme = LS.get("pm_theme") === "night" ? "night" : "sun";
-if (M) { const last = SS.get("pm_last"); if (last && Date.now() - last > IDLE_MS) { M = null; SS.set("pm_session", null); SS.set("pm_last", null); } }
-setInterval(() => { if (M) SS.set("pm_last", LAST); }, 10000);
-setInterval(tick, 15000);
-setInterval(() => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED)) load(true); }, POLL_MS);
-setInterval(() => { if (M && Date.now() - LAST > IDLE_MS) exitManager("Manager mode turned off after 2 hours without use."); }, 30000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden && !BUSY && !(MODE === "offline" && FORCED) && Date.now() - Date.parse(SNAP || 0) > 30000) load(true); });
-window.addEventListener("online", () => { if (!FORCED) load(true); });
-if (M) { if (loadSnap()) MODE = "offline"; render(); load(true); }   // signed in on this tab: paint the last snapshot, then sync
-else { LS.set("pm_snap", null); render(); openLogin(); }   // signed out: only the sign-in box, nothing loads
+const ADDACT_REFRESH = async () => { const id = SEL && SEL.runId; RS = {}; CAL = null; await load(true); if (id) await loadRun(id); };
+$("refresh").onclick = () => { RS = {}; CAL = null; toast("Refreshing…"); load(); };
+const sget = () => { try { return JSON.parse(localStorage.getItem("board_session") || "null"); } catch (e) { return null; } };
+const sput = v => { try { v ? localStorage.setItem("board_session", JSON.stringify(v)) : localStorage.removeItem("board_session"); } catch (e) {} };
+function showLogin(msg) { $("login").classList.remove("hidden"); $("lerr").textContent = msg || ""; $("lerr").classList.toggle("hidden", !msg); setTimeout(() => $(msg ? "lp" : "lu").focus(), 0); }
+function signedIn(s) { TOKEN = s.token; ME = {name: s.name, role: s.role}; $("who").textContent = s.name + " · " + s.role; $("login").classList.add("hidden"); }
+function signOut(msg) { TOKEN = null; ME = null; sput(null); try { if (msg) sessionStorage.setItem("board_msg", msg); } catch (e) {} location.reload(); }   // a reload wipes everything the last user could see
+async function doLogin() {
+  const u = $("lu").value.trim(), p = $("lp").value; if (!u || !p) return showLogin("Enter your user name and PIN.");
+  $("lgo").disabled = true;
+  try { const r = await post({action:"boardLogin", user:u, pin:p, device:navigator.userAgent}); $("lp").value = ""; const s = {token:r.token, name:r.user.name, role:r.user.role}; sput(s); signedIn(s); load(); }
+  catch (e) { $("lp").value = ""; showLogin(e.message); }
+  finally { $("lgo").disabled = false; }
+}
+$("lgo").onclick = doLogin;
+["lu", "lp"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
+$("logout").onclick = async () => { try { await post({action:"logout"}); } catch (e) {} signOut(); };
+tabs();
+{ const s0 = sget(); let m = ""; try { m = sessionStorage.getItem("board_msg") || ""; sessionStorage.removeItem("board_msg"); } catch (e) {}
+  if (s0 && s0.token) { signedIn(s0); load(); } else showLogin(m); }
 </script></body></html>

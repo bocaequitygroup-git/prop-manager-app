@@ -281,10 +281,16 @@ function crewData() {
 const netMs = (s, now) => (s.pausedAt ? Date.parse(s.pausedAt) : (now || nowMs())) - Date.parse(s.startedAt) - (+s.pausedSec || 0) * 1000;
 const tNet = s => `<b data-timer="net" data-start="${esc(s.startedAt)}" data-ps="${+s.pausedSec || 0}" data-pa="${esc(s.pausedAt)}">${hm(netMs(s))}</b>`;
 const tSince = iso => `<b data-timer="since" data-since="${esc(iso)}">${hm(nowMs() - Date.parse(iso))}</b>`;
-function tick() { const now = nowMs(); document.querySelectorAll("[data-timer]").forEach(el => { const d = el.dataset; el.textContent = d.timer === "net" ? hm(netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now)) : hm(now - Date.parse(d.since)); }); }
+function tick() { const now = nowMs(); document.querySelectorAll("[data-timer]").forEach(el => { const d = el.dataset; if (d.timer === "bud") { try { const ms = netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now), b = +d.bud * 3600000; el.className = "badge " + (ms > b ? "bad" : "ok"); el.textContent = ms > b ? "Over budget by " + hm(ms - b) : "Budget " + hm(b); } catch (e) {} return; } el.textContent = d.timer === "net" ? hm(netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now)) : hm(now - Date.parse(d.since)); }); }
+const budTag = s => { try {   // advisory only: a problem here shows nothing and never affects the rest of the screen
+  if (s.budgetH == null) return ""; const over = netMs(s) > s.budgetH * 3600000;
+  return ` <b class="badge ${over ? "bad" : "ok"}" data-timer="bud" data-bud="${+s.budgetH}" data-start="${esc(s.startedAt)}" data-ps="${+s.pausedSec || 0}" data-pa="${esc(s.pausedAt)}">${over ? "Over budget by " + hm(netMs(s) - s.budgetH * 3600000) : "Budget " + hm(s.budgetH * 3600000)}</b>`; } catch (e) { return ""; } };
+const budPortion = (a, min) => { try {
+  if (a.budgetH == null) return ""; const over = min > a.budgetH * 60;
+  return over ? ` · <span class="badge bad">Over budget by ${hm((min - a.budgetH * 60) * 60000)}</span>` : ` · <span class="badge ok">Within budget (${hm(a.budgetH * 3600000)})</span>`; } catch (e) { return ""; } };
 function sessLine(s) {
   const stall = /stall/i.test(s.pauseReason);
-  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activityId)} ${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}${refOf(s.activityId).description ? `<br><span class="k">${esc(refOf(s.activityId).description)}</span>` : ""}</div>`;
+  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activityId)} ${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${budTag(s)}${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}${refOf(s.activityId).description ? `<br><span class="k">${esc(refOf(s.activityId).description)}</span>` : ""}</div>`;
 }
 
 /* ---------- header, KPIs ---------- */
@@ -378,7 +384,7 @@ function portBox(a, r) {   // manager audit: verify each worker's submitted port
   const q = x => x.qty !== "" && x.qty != null ? " · " + esc(x.qty) + " " + esc(x.unit) : "";
   return `<div class="d"><b>Worker portions</b> <span class="k">each must be verified before the phase can advance</span>${P.map(p => `${crop ? `<div class="k">Wave ${p.wave}${p.cleared ? " · all verified" : ""}</div>` : ""}${p.workers.map(x => {
     if (x.verified) return `<div class="k">✓ ${esc(x.name)}${q(x)} · verified by ${esc(x.verifiedBy)}${x.notes ? " · " + esc(x.notes) : ""}</div>`;
-    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
+    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}${budPortion(a, x.min)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
     if (x.required && !x.submitted) { const team = a.assignees || [], multi = team.length > 1 && a.scope === "crop-wave", ids = team.map(t => String(t.id)), free = (D.workers || []).filter(w => !ids.includes(String(w.id)));
       const nk = dk("dn", r.runId, a.id, x.name), sk = dk("rt", r.runId, a.id, x.name);
       return `<div class="frm"><span class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : "not submitted yet"}</span>`

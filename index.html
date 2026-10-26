@@ -72,6 +72,8 @@ details{border:2px solid var(--line);border-radius:10px;padding:4px 10px;margin:
 .wk{border:2px solid var(--edge);border-left-width:10px;border-radius:12px;padding:8px 12px;margin:8px 0}.wk.ws-IN_PROGRESS{border-left-color:var(--acc)}.wk.ws-PAUSED{border-left-color:var(--warnb);background:var(--warns);color:var(--warn)}.wk.ws-ASSIGNED{border-left-color:var(--blue)}.wk.ws-IDLE{border-left-color:var(--line)}
 .al{border:2px solid var(--warnb);background:var(--warns);color:var(--warn);border-radius:12px;padding:8px 12px;margin:8px 0}.al .k{color:var(--warn)}
 table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:5px 8px;border-bottom:2px solid var(--line);font-size:14px;vertical-align:top}th{color:var(--mute)}.tw{overflow-x:auto}
+.lt tr.sub td{color:var(--mute)}.lt tr.sub td:first-child{padding-left:24px}.lt tr.tot td{font-weight:700;border-top:3px solid var(--edge)}.lt tr.grp td{font-weight:700}.lt td.o{color:var(--bad);font-weight:700}
+.bt{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:8px 0}.bt>div{border:2px solid var(--line);border-radius:10px;padding:6px 10px;background:var(--card);display:flex;flex-direction:column}.bt b{font-size:20px;line-height:1.3}.bt .bad b{color:var(--bad)}.bt .ok b{color:var(--acc)}
 #login{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}#login .card{width:min(380px,100%);display:grid;gap:10px}#login label{display:grid;gap:3px;font-weight:700}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:50;max-width:92vw;font-weight:700}
 body.busy{cursor:progress}
@@ -157,7 +159,7 @@ async function call(url, opt) {
   if (j.error) { if (/^AUTH:/.test(j.error) && M) exitManager("Manager session ended. Turn Manager mode on again."); throw new Error(j.error.replace(/^AUTH:\s*/, "")); }
   return j;
 }
-async function get(p) { const go = () => call(API_URL + "?" + new URLSearchParams(p)); try { return await go(); } catch (e) { if (!/web page/.test(e.message)) throw e; await new Promise(r => setTimeout(r, 1200)); return go(); } }
+async function get(p) { const go = () => M ? call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({...p, token:M.token})}) : call(API_URL + "?" + new URLSearchParams(p)); try { return await go(); } catch (e) { if (!/web page/.test(e.message)) throw e; await new Promise(r => setTimeout(r, 1200)); return go(); } }
 const post = b => call(API_URL, {method:"POST", headers:hdr, body:JSON.stringify({...b, token: M ? M.token : undefined})});
 
 /* ---------- state ---------- */
@@ -334,6 +336,95 @@ function matrix() {
 
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
 const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? (q.waveOk ? "In progress · this wave verified, other waves not finished" : "In progress") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.join(", ") : "") : a.assignee ? "Assigned" : "Not assigned"; };
+/* ---------- Labor Hours: closed work sessions from the permanent ledger (read-only ?action=log) plus the advisory budget (action laborBudget). ---------- */
+let LAB = null, LLOAD = false, LERR = "", LBA = null, LB = {show: "7", from: "", to: "", view: "budget"};
+const LSH = {"7": "Last 7 days", "30": "Last 30 days", all: "All time"}, LVW = {budget: "Budget vs Actual", worker: "By worker", sessions: "All sessions"}, NOWK = "No worker recorded";
+const ldate = s => { s = String(s || ""); if (s.length <= 10) return s; const d = new Date(s); return isNaN(d) ? s.slice(0, 10) : new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const lhm = h => { const n = Math.round(h * 60); return Math.floor(n / 60) + ":" + String(n % 60).padStart(2, "0"); };
+const bh = x => x.toFixed(2) + " h", bn = n => n + " activit" + (n === 1 ? "y" : "ies");
+function labPreset() {
+  const t = localToday(), ds = (LAB || []).map(x => x.d).filter(Boolean).sort();
+  if (LB.show === "7") { LB.from = add(t, -6); LB.to = t; } else if (LB.show === "30") { LB.from = add(t, -29); LB.to = t; }
+  else if (LB.show === "all") { LB.from = ds[0] || t; LB.to = ds.length && ds[ds.length - 1] > t ? ds[ds.length - 1] : t; }
+}
+async function loadLab() {
+  if (LLOAD) return; LLOAD = true; LERR = "";
+  try {
+    LBA = null; try { const q = await get({action: "laborBudget"}); LBA = {}; (q.units || []).forEach(u => { LBA[u.key] = u; }); } catch (e) { LBA = null; }
+    const r = await get({action: "log"});
+    LAB = r.entries.filter(x => !x.correctedBy).map(x => ({id: x.log_id, d: ldate(x.closed_at || x.started_at), at: x.closed_at || x.started_at, h: Number(x.labor_hours) || 0, crop: x.crop_code, wave: x.wave, run: x.run_id, aid: x.activity_id,
+      act: String(x.activity_name || x.activity_id || "Unnamed activity").trim(), who: String(x.workers || "").split(/[;,]/).map(n => n.trim()).filter(Boolean)}));
+    labPreset();
+  } catch (e) { LAB = null; LERR = e.message; }
+  LLOAD = false; if (TAB === "labor") side();
+}
+function labGroups(es) {   // by worker; a session with several workers splits its hours equally, so the grand total always equals the ledger total
+  const top = new Map();
+  es.forEach(e => (e.who.length ? e.who : [NOWK]).forEach(w => { const h = e.h / Math.max(1, e.who.length), uk = LBA && (LBA[e.run + "|" + e.aid] || LBA[e.run + "|" + e.aid + "|" + e.wave]);
+    const g = top.get(w) || {key: w, ids: new Set(), h: 0, subs: new Map(), units: new Set()}; top.set(w, g); g.ids.add(e.id); g.h += h; if (uk) g.units.add(uk.key);
+    const sg = g.subs.get(e.act) || {key: e.act, ids: new Set(), h: 0, units: new Set()}; g.subs.set(e.act, sg); sg.ids.add(e.id); sg.h += h; if (uk) sg.units.add(uk.key); }));
+  const srt = (p, q) => q.h - p.h || q.ids.size - p.ids.size || String(p.key).localeCompare(q.key);
+  return [...top.values()].sort(srt).map(g => ({key: g.key, n: g.ids.size, h: g.h, units: [...g.units], subs: [...g.subs.values()].sort(srt).map(x => ({key: x.key, n: x.ids.size, h: x.h, units: [...x.units]}))}));
+}
+const labBudSum = keys => { try {   // the activity's own budget for the units these sessions belong to; a worker is not compared with it (no per-worker allocation is configured)
+  let b = 0, n = 0; (keys || []).forEach(k => { const u = LBA && LBA[k]; if (u && u.budgetH != null) { b += u.budgetH; n++; } }); return n ? lhm(b) : "Budget Unavailable"; } catch (e) { return "Budget Unavailable"; } };
+function labView() {
+  const es = LAB.filter(x => x.d >= LB.from && x.d <= LB.to), tot = es.reduce((n, x) => n + x.h, 0);
+  if (LB.view === "sessions") { const l = es.slice().sort((p, q) => String(q.at).localeCompare(String(p.at))); return {es, tot, head: ["Date", "Worker", "Activity", "Hours (h:mm)", "Hours (decimal)"], csv: ["Closed at", "Worker", "Activity", "Crop", "Wave", "Hours (h:mm)", "Hours (decimal)"],
+    rows: l.map(x => ({c: [fmt(x.d), x.who.join(", ") || NOWK, x.act, lhm(x.h), x.h.toFixed(2)], r: [x.at, x.who.join(", ") || NOWK, x.act, x.crop, x.wave, lhm(x.h), x.h.toFixed(2)]})),
+    total: ["Total", "", `${es.length} session${es.length === 1 ? "" : "s"}`, lhm(tot), tot.toFixed(2)]}; }
+  const rows = [];
+  labGroups(es).forEach(x => {
+    rows.push({cls: "grp", c: [x.key, x.n, lhm(x.h), x.h.toFixed(2), ""], r: [x.key, "", x.n, lhm(x.h), x.h.toFixed(2), ""]});
+    x.subs.forEach(y => { const sb = labBudSum(y.units); rows.push({cls: "sub", c: [y.key, y.n, lhm(y.h), y.h.toFixed(2), sb], r: [x.key, y.key, y.n, lhm(y.h), y.h.toFixed(2), sb]}); }); });
+  return {es, tot, head: ["Worker / activity", "Sessions", "Hours (h:mm)", "Hours (decimal)", "Activity budget (h:mm)"], csv: ["Worker", "Activity", "Sessions", "Hours (h:mm)", "Hours (decimal)", "Activity budget (h:mm)"], rows, total: ["Total", es.length, lhm(tot), tot.toFixed(2), ""]};
+}
+/* Budget vs Actual (advisory): system-wide, by user, and the simple worker / activity table.
+   System-wide: every production unit (a crop-wave activity on one wave, or a pre-sowing activity once per run) is compared ONCE: all workers' hours against its budget.
+   Rules: Over Budget (hours over) | At Budget (equal) | Under Budget (hours under) | Budget Unavailable. */
+function budView() { try {
+  const U = LBA ? Object.keys(LBA).map(k => LBA[k]) : null; if (!U) return {err: "Budget Unavailable: the budget comparison could not be loaded. Press Reload."};
+  if (!U.length) return {err: "No labor hours have been recorded against any activity yet."};
+  const S = {"Over Budget": {n: 0, h: 0}, "At Budget": {n: 0, h: 0}, "Under Budget": {n: 0, h: 0}, "Budget Unavailable": {n: 0, h: 0}}, usr = new Map(), det = [];
+  U.forEach(u => { const s = S[u.status] || S["Budget Unavailable"]; s.n++; s.h += u.status === "Over Budget" ? u.varianceH : u.status === "Under Budget" ? -u.varianceH : u.status === "Budget Unavailable" ? u.actualH : 0;
+    Object.keys(u.byWorker || {}).forEach(w => { const d = u.byWorker[w], o = usr.get(w) || {w, h: 0, c: {"Over Budget": new Set(), "At Budget": new Set(), "Under Budget": new Set(), "Budget Unavailable": new Set()}}; usr.set(w, o); o.h += d.h; (o.c[u.status] || o.c["Budget Unavailable"]).add(u.key); det.push({u, w, d}); }); });
+  const tile = (l, v, c, k) => `<div class="${c || ""}"><span class="k">${l}</span><b>${v}</b><span class="k">${k}</span></div>`;
+  const O = S["Over Budget"], A = S["At Budget"], D2 = S["Under Budget"], N = S["Budget Unavailable"];
+  const users = [...usr.values()].sort((p, q) => q.h - p.h), cn = (o, k) => o.c[k].size ? bn(o.c[k].size) : "";
+  const runLbl = id => { const r = ((D && D.runs) || []).find(x => x.runId === id) || {}; return (r.cropName || r.crop || "Run") + " · " + id; }, dt = s => s ? fmt(ldate(s)) : "";
+  det.sort((p, q) => String(q.d.end).localeCompare(String(p.d.end)) || String(p.u.activityId).localeCompare(String(q.u.activityId)) || p.w.localeCompare(q.w));
+  const rows = det.map(({u, w, d}) => { const un = u.scope === "pre-sowing" ? "Whole run" : "Wave " + u.wave, ov = u.status === "Over Budget", un2 = u.status === "Under Budget", ma = u.status === "At Budget";
+    return {over: ov, c: [w, u.activityId, u.activity, u.budgetH == null ? "Budget Unavailable" : bh(u.budgetH), dt(d.start), dt(d.end), bh(d.h), ov ? bh(u.varianceH) : "", un2 ? bh(-u.varianceH) : "", ma ? "✓" : "", runLbl(u.runId) + " · " + un],
+      r: [w, u.activityId, u.activity, u.budgetH == null ? "Budget Unavailable" : u.budgetH, ldate(d.start), ldate(d.end), d.h, ov ? u.varianceH : "", un2 ? -u.varianceH : "", ma ? "Match" : "", runLbl(u.runId), un]}; });
+  const html = `<h3 style="margin:8px 0 4px">System-wide</h3>
+    <div class="bt">${tile("Over Budget", bh(O.h), O.n ? "bad" : "", bn(O.n))}${tile("At Budget", bn(A.n), "", "actual equals budget")}${tile("Under Budget", bh(D2.h), D2.n ? "ok" : "", bn(D2.n))}${tile("Budget Unavailable", bn(N.n), "", bh(N.h) + " recorded, not compared")}</div>
+    <p class="k">Each activity (one wave, or the whole run for pre-sowing activities) is compared once: all workers' recorded hours against its budget. Sessions are never counted twice.</p>
+    <h3 style="margin:12px 0 4px">By user</h3>
+    <div class="tw"><table class="lt"><tr>${["User", "Actual hours", "Activities worked", "Over Budget", "At Budget", "Under Budget", "Budget Unavailable"].map(x => `<th>${x}</th>`).join("")}</tr>${users.map(o => `<tr><td>${esc(o.w)}</td><td>${bh(o.h)}</td><td>${bn(new Set([].concat(...Object.values(o.c).map(s => [...s]))).size)}</td><td>${cn(o, "Over Budget")}</td><td>${cn(o, "At Budget")}</td><td>${cn(o, "Under Budget")}</td><td>${cn(o, "Budget Unavailable")}</td></tr>`).join("")}</table></div>
+    <p class="k">No per-worker share of an activity budget is configured, so a worker is not compared with an activity budget. The status columns count the activities the worker took part in, using that activity's overall status.</p>
+    <h3 style="margin:12px 0 4px">Worker · activity</h3>
+    <div class="tw"><table class="lt"><tr>${["Worker", "Activity ID", "Activity description", "Budget", "Start date", "Completed date", "Actual hours", "Over budget", "Under budget", "Match budget", "Run · unit"].map(x => `<th>${x}</th>`).join("")}</tr>${rows.map(r => `<tr>${r.c.map((c, i) => `<td${i === 7 && r.over ? ' class="o"' : ""}>${esc(c)}</td>`).join("")}</tr>`).join("")}</table></div>
+    <p class="k">Budget is the activity's budget. Actual hours are that worker's own recorded hours. Over, Under and Match budget are the activity's overall result (all workers together), repeated on each worker's row, so do not add them up. The date range does not apply here.</p>`;
+  return {html, rows, head: ["Worker", "Activity ID", "Activity description", "Budget (h)", "Start date", "Completed date", "Actual hours", "Over budget (h)", "Under budget (h)", "Match budget", "Run", "Unit"], file: "labor-budget-vs-actual"};
+} catch (e) { return {err: "Budget Unavailable: the comparison could not be built."}; } }
+function paneLabor() {
+  const head = `<div class="row" style="margin-top:0"><h2 style="margin:0">Labor Hours</h2><span class="sp"></span><button type="button" class="alt sm" data-a="lload">Reload</button></div>`;
+  if (!LAB) { if (!LLOAD && !LERR) loadLab(); return head + (LERR ? `<div class="note bad" style="margin:8px 0">${esc(LERR)}</div>` : `<p class="k">Loading labor hours…</p>`); }
+  const btn = (a, v, cur, l) => `<button type="button" class="sm ${cur === v ? "on" : "alt"}" data-a="${a}" data-v="${v}">${l}</button>`, isB = LB.view === "budget", bv = isB ? budView() : null, bad = !isB && LB.from > LB.to, v = isB || bad ? null : labView();
+  return head + `${isB ? "" : `<div class="row"><label class="k">From <input type="date" id="lf" value="${LB.from}"></label><label class="k">To <input type="date" id="lt" value="${LB.to}"></label>
+    <span class="k">Show</span>${Object.keys(LSH).map(k => btn("lshow", k, LB.show, LSH[k])).join("")}</div>`}
+  <div class="row">${Object.keys(LVW).map(k => btn("lview", k, LB.view, LVW[k])).join("")}<span class="sp"></span><button type="button" class="alt sm" data-a="lcsv" ${(isB ? bv && bv.rows && bv.rows.length : v && v.rows.length) ? "" : "disabled"}>Download CSV</button></div>
+  ${isB ? (bv.err ? `<div class="note" style="margin:8px 0">${esc(bv.err)}</div>` : bv.html) : bad ? `<div class="note" style="margin:8px 0">The From date is after the To date.</div>` : `<p><b>${v.tot.toLocaleString(undefined, {maximumFractionDigits: 2})} h</b> total labor hours · ${v.es.length} session${v.es.length === 1 ? "" : "s"} from ${fmt(LB.from)} to ${fmt(LB.to)}</p>
+  ${v.rows.length ? `<div class="tw"><table class="lt"><tr>${v.head.map(h => `<th>${h}</th>`).join("")}</tr>${v.rows.map(r => `<tr class="${r.cls || ""}">${r.c.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}<tr class="tot">${v.total.map(c => `<td>${esc(c)}</td>`).join("")}</tr></table></div>` : `<p class="k">No closed sessions in this range.</p>`}`}`;
+}
+function labCsv() {
+  const q = x => '"' + String(x ?? "").replace(/"/g, '""') + '"', save = (csv, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], {type: "text/csv"})); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+  if (!LAB) return;
+  if (LB.view === "budget") { const b = budView(); if (!b.rows || !b.rows.length) return; save([b.head.map(q).join(","), ...b.rows.map(r => r.r.map(q).join(","))].join("\r\n"), b.file + ".csv"); return; }
+  const v = labView(), tot = v.csv.length === 7 ? ["Total", "", "", "", "", lhm(v.tot), v.tot.toFixed(2)] : ["Total", "", v.es.length, lhm(v.tot), v.tot.toFixed(2), ""];
+  save([v.csv.map(q).join(","), ...v.rows.map(r => r.r.map(q).join(",")), tot.map(q).join(",")].join("\r\n"), `labor-hours-${LB.view}-${LB.from}-to-${LB.to}.csv`);
+}
+
 /* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
 
 /* ---------- Labor budget (advisory, display only) ----------
@@ -780,9 +871,9 @@ document.addEventListener("click", e => {
 
 function side() {
   if (!D) { $("tabs").innerHTML = ""; $("pane").innerHTML = `<p class="k">${esc(ERR || "Loading…")}</p>`; return; }
-  const tabs = [["waves", "Waves", ""], ["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["plan", "Shortfall Crop", ""], ["log", "Log", ""]];
+  const tabs = [["waves", "Waves", ""], ["wave", "Wave", ""], ["review", "Review", runs().reduce((n, r) => n + (r.acts ? r.acts.awaiting : 0), 0)], ["crew", "Crew", D.sessions.length], ["watch", "Watch", openAlerts().length], ["plan", "Shortfall Crop", ""], ["labor", "Labor Hours", ""], ["log", "Log", ""]];
   $("tabs").innerHTML = tabs.map(([v, l, n]) => `<button type="button" role="tab" aria-selected="${TAB === v}" class="${TAB === v ? "on" : "alt"}" data-a="tab" data-tab="${v}">${l}${n ? " (" + n + ")" : ""}</button>`).join("");
-  $("pane").innerHTML = TAB === "waves" ? wavesList() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : TAB === "plan" ? panePlan() : paneLog();
+  $("pane").innerHTML = TAB === "waves" ? wavesList() : TAB === "wave" ? paneWave() : TAB === "review" ? paneReview() : TAB === "crew" ? paneCrew() : TAB === "watch" ? paneWatch() : TAB === "plan" ? panePlan() : TAB === "labor" ? paneLabor() : paneLog();
 }
 
 /* ---------- render ---------- */
@@ -943,6 +1034,8 @@ document.addEventListener("click", e => {
     case "kpiatt": FILT = "attention"; TAB = "waves"; render(true); side(); break;
     case "day": T = d.d === "0" ? localToday() : add(T, +d.d); render(); break;
     case "crewv": CREW = d.v; side(); break;
+    case "lview": LB.view = d.v; side(); break; case "lshow": LB.show = d.v; labPreset(); side(); break;
+    case "lload": LAB = null; LERR = ""; loadLab(); side(); break; case "lcsv": labCsv(); break;
     case "pickall": { const c = cur(); if (c && c.rs) { PICK.clear(); c.rs.activities.forEach(a => { if (isFin(a) || (a.hold && !a.assignee)) return; if (d.m === "all" || (d.m === "un" && !a.assignee) || (d.m === "ids" && (d.ids || "").split(",").includes(a.id))) PICK.add(a.id); }); side(); if (d.m === "ids") { const el = $("wlist"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); } } break; }
     case "rgo": if (gate()) doReassign(d.id); break; case "fixmove": if (gate()) doFixMove(d.id); break;
     case "rv": RV = d.v; side(); break; case "ru": RU = d.v; side(); break;
@@ -961,6 +1054,7 @@ document.addEventListener("change", e => {
   else if (d.wk) { t.checked ? WPICK.add(d.wk) : WPICK.delete(d.wk); const c = cur(); if (c) side(); }
   else if (t.id === "day") { T = t.value || T; render(); }
   else if (t.id === "cf") { CF = t.value; render(true); }
+  else if (t.id === "lf" || t.id === "lt") { const k = t.id === "lf" ? "from" : "to"; LB[k] = t.value || LB[k]; LB.show = ""; side(); }
   else if (t.id === "sq") { SQ = Math.max(0.5, +t.value || 1.55); LS.set("pm_sq", SQ); render(true); }
 });
 document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.d; if (k) DRAFT[k] = e.target.value; });

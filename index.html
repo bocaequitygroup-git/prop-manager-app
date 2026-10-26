@@ -262,8 +262,9 @@ async function freshRun() {   // re-read the open run on every sync so worker co
   const keep = SEL && SEL.runId; Object.keys(RS).forEach(id => { if (id !== keep) delete RS[id]; });
   if (!keep || LOADING[keep]) return;
   try { const rs = await get({action:"run", runId:keep}); if (rs && rs.activities) applyRun(rs); } catch (e) {}
+  loadLabor(keep);
 }
-async function loadRun(id) { LOADING[id] = 1; try { RS[id] = await get({action:"run", runId:id}); } catch (e) { RS[id] = {runId:id, activities:[], leaf:{}, error:e.message}; toast(e.message, true); } delete LOADING[id]; render(true); }
+async function loadRun(id) { loadLabor(id); LOADING[id] = 1; try { RS[id] = await get({action:"run", runId:id}); } catch (e) { RS[id] = {runId:id, activities:[], leaf:{}, error:e.message}; toast(e.message, true); } delete LOADING[id]; render(true); }
 
 /* ---------- crew ---------- */
 function crewData() {
@@ -281,16 +282,10 @@ function crewData() {
 const netMs = (s, now) => (s.pausedAt ? Date.parse(s.pausedAt) : (now || nowMs())) - Date.parse(s.startedAt) - (+s.pausedSec || 0) * 1000;
 const tNet = s => `<b data-timer="net" data-start="${esc(s.startedAt)}" data-ps="${+s.pausedSec || 0}" data-pa="${esc(s.pausedAt)}">${hm(netMs(s))}</b>`;
 const tSince = iso => `<b data-timer="since" data-since="${esc(iso)}">${hm(nowMs() - Date.parse(iso))}</b>`;
-function tick() { const now = nowMs(); document.querySelectorAll("[data-timer]").forEach(el => { const d = el.dataset; if (d.timer === "bud") { try { const ms = netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now), b = +d.bud * 3600000; el.className = "badge " + (ms > b ? "bad" : "ok"); el.textContent = ms > b ? "Over budget by " + hm(ms - b) : "Budget " + hm(b); } catch (e) {} return; } el.textContent = d.timer === "net" ? hm(netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now)) : hm(now - Date.parse(d.since)); }); }
-const budTag = s => { try {   // advisory only: a problem here shows nothing and never affects the rest of the screen
-  if (s.budgetH == null) return ""; const over = netMs(s) > s.budgetH * 3600000;
-  return ` <b class="badge ${over ? "bad" : "ok"}" data-timer="bud" data-bud="${+s.budgetH}" data-start="${esc(s.startedAt)}" data-ps="${+s.pausedSec || 0}" data-pa="${esc(s.pausedAt)}">${over ? "Over budget by " + hm(netMs(s) - s.budgetH * 3600000) : "Budget " + hm(s.budgetH * 3600000)}</b>`; } catch (e) { return ""; } };
-const budPortion = (a, min) => { try {
-  if (a.budgetH == null) return ""; const over = min > a.budgetH * 60;
-  return over ? ` · <span class="badge bad">Over budget by ${hm((min - a.budgetH * 60) * 60000)}</span>` : ` · <span class="badge ok">Within budget (${hm(a.budgetH * 3600000)})</span>`; } catch (e) { return ""; } };
+function tick() { const now = nowMs(); document.querySelectorAll("[data-timer]").forEach(el => { const d = el.dataset; el.textContent = d.timer === "net" ? hm(netMs({startedAt:d.start, pausedSec:+d.ps, pausedAt:d.pa}, now)) : hm(now - Date.parse(d.since)); }); }
 function sessLine(s) {
   const stall = /stall/i.test(s.pauseReason);
-  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activityId)} ${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${budTag(s)}${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}${refOf(s.activityId).description ? `<br><span class="k">${esc(refOf(s.activityId).description)}</span>` : ""}</div>`;
+  return `<div>${s.pausedAt ? "⏸" : "▶"} <b>${esc(s.activityId)} ${esc(s.activity)}</b> · ${esc(s.crop)} W${s.wave} · ${esc(s.location)} · ${tNet(s)} worked${s.pausedAt ? `<br><span class="badge ${stall ? "bad" : "wait"}">Paused: ${esc(s.pauseReason || "no reason")}</span> for ${tSince(s.pausedAt)}` : ""}${refOf(s.activityId).description ? `<br><span class="k">${esc(refOf(s.activityId).description)}</span>` : ""}</div>`;
 }
 
 /* ---------- header, KPIs ---------- */
@@ -340,6 +335,23 @@ function matrix() {
 /* ---------- wave pane (detail, gates, first-leaf, dispatch) ---------- */
 const statusOf = a => { if (a.overridden) return "Overridden"; const q = actKind(a); return q.k === "done" ? "Verified" : q.k === "wait" ? "Submitted, awaiting your verification" : q.k === "prog" ? (q.waveOk ? "In progress · this wave verified, other waves not finished" : "In progress") + (q.tot ? " · " + q.sub + " of " + q.tot + " submitted" + (q.ver ? ", " + q.ver + " verified" : "") : "") + ((q.miss || []).length ? " · waiting on " + q.miss.join(", ") : "") : a.assignee ? "Assigned" : "Not assigned"; };
 /* ---------- dispatch progress (activities are shared by every wave of a run) ---------- */
+
+/* ---------- Labor budget (advisory, display only) ----------
+   Compares the labor hours allowed for an activity with the human hours recorded in the permanent ledger, per production unit:
+   crop-wave activities per wave, pre-sowing activities once per run. A separate read (action "laborBudget"): if it fails, nothing is shown and nothing else is affected. */
+const LBU = {}, LBS = {};   // runId -> {unit key: unit}; runId -> last payload (re-draw only when it changed)
+const lbH = h => { const m = Math.round(Math.abs(h) * 60); return Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0"); };
+const lbS = h => (h > 0.0004 ? "+" : h < -0.0004 ? "−" : "") + lbH(h);
+async function loadLabor(runId) {
+  try { const r = await get({action:"laborBudget", runId}), m = {}; (r.units || []).forEach(u => { m[u.key] = u; });
+    const s = JSON.stringify(m); if (s !== LBS[runId]) { LBS[runId] = s; LBU[runId] = m; render(true); } } catch (e) {}
+}
+function lbLine(a) { try {
+  const run = SEL && SEL.runId, m = run && LBU[run]; if (!m) return "";
+  const u = a.scope === "pre-sowing" ? m[run + "|" + a.id] : (WV ? m[run + "|" + a.id + "|" + WV.wave] : null); if (!u) return "";
+  const cls = u.status === "Over Budget" ? "bad" : u.status === "Within Budget" ? "ok" : "gry", p = u.variancePct;
+  return `<div class="d k">Labor · ${u.scope === "pre-sowing" ? "whole run" : "wave " + u.wave}: ${u.budgetH == null ? "" : "Budget " + lbH(u.budgetH) + " · "}Actual ${lbH(u.actualH)}${u.varianceH == null ? "" : " · Variance " + lbS(u.varianceH) + (p == null ? "" : " (" + (p > 0 ? "+" : p < 0 ? "−" : "") + Math.abs(p) + "%)")} · <span class="badge ${cls}">${u.status}</span></div>`; } catch (e) { return ""; } }
+const portNote = a => portNote0(a) + lbLine(a);
 let WV = null;   // wave the open panel shows: activities are shared by the run, but each worker's portion is submitted and verified per wave
 function actKind(a, w) {   // {k: done | wait | prog | as | un, sub, tot}: done = every assigned worker's portion verified by the manager
   const S = a.sessions || [], P = a.portions || [], wv = w || WV, crop = a.scope === "crop-wave";
@@ -373,7 +385,7 @@ async function doReassignWorker(id, who) {   // hands ONE worker's seat on an ac
   const rs = await write("Reassigning " + who + " to " + to.name, () => post({action:"assign", runId:c.r.runId, activityIds:[id], workerIds:team.map(x => x.name === who ? String(to.id) : String(x.id)), note}));
   if (rs) { delete DRAFT[sk]; delete DRAFT[nk]; } done(rs, who + " → " + to.name + " on " + id);
 }
-function portNote(a) {   // each worker's own portion: working, submitted, verified
+function portNote0(a) {   // each worker's own portion: working, submitted, verified
   if (a.overridden) return "";
   const P = a.portions || [], crop = a.scope === "crop-wave", S = a.sessions || [];
   const lines = P.filter(p => !crop || !WV || p.wave === WV.wave).map(p => (crop ? "W" + p.wave + ": " : "") + p.workers.map(x => esc(x.name) + (x.verified ? " ✓ verified" + (S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · ⚠ session still open" : "") : x.submitted ? " · submitted, awaiting verification" : S.some(s => s.by === x.name && (!crop || Number(s.wave) === p.wave)) ? " · working" : x.required ? " · not submitted" : "")).join("; "));
@@ -384,7 +396,7 @@ function portBox(a, r) {   // manager audit: verify each worker's submitted port
   const q = x => x.qty !== "" && x.qty != null ? " · " + esc(x.qty) + " " + esc(x.unit) : "";
   return `<div class="d"><b>Worker portions</b> <span class="k">each must be verified before the phase can advance</span>${P.map(p => `${crop ? `<div class="k">Wave ${p.wave}${p.cleared ? " · all verified" : ""}</div>` : ""}${p.workers.map(x => {
     if (x.verified) return `<div class="k">✓ ${esc(x.name)}${q(x)} · verified by ${esc(x.verifiedBy)}${x.notes ? " · " + esc(x.notes) : ""}</div>`;
-    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}${budPortion(a, x.min)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
+    if (x.submitted) return `<div class="frm"><span class="k">${esc(x.name)} submitted ${x.at ? when(x.at) : ""} · ${x.min} min${q(x)}</span><input type="text" data-d="${dk("n", r.runId, x.logId)}" value="${dv(dk("n", r.runId, x.logId))}" placeholder="Audit notes (optional)" aria-label="Audit notes for ${esc(x.name)}"><button type="button" class="sm" data-a="vw" data-id="${esc(a.id)}" data-log="${esc(x.logId)}">Verify ${esc(x.name)}</button></div>`;
     if (x.required && !x.submitted) { const team = a.assignees || [], multi = team.length > 1 && a.scope === "crop-wave", ids = team.map(t => String(t.id)), free = (D.workers || []).filter(w => !ids.includes(String(w.id)));
       const nk = dk("dn", r.runId, a.id, x.name), sk = dk("rt", r.runId, a.id, x.name);
       return `<div class="frm"><span class="k">○ ${esc(x.name)} · ${x.partial ? "partly done, not submitted" : "not submitted yet"}</span>`
